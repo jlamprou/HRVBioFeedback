@@ -38,7 +38,11 @@
       "Bash(curl:*)",
       "Bash(grep -v \"^$\")",
       "Bash(grep -v \"^[[:space:]]*$\")",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(./gradlew :app:testDebugUnitTest --tests \"*.SyntheticValidatorTest\")",
+      "Bash(where gradle:*)",
+      "Bash(ls gradlew*)",
+      "Read(//c/Users/Giannis Lamprou/.gradle/wrapper/dists//**)"
     ]
   }
 }

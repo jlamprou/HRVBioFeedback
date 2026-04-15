@@ -11,6 +11,7 @@ import com.hrv.biofeedback.domain.dsp.NonlinearAnalyzer
 import com.hrv.biofeedback.domain.dsp.PeakTroughAnalyzer
 import com.hrv.biofeedback.domain.dsp.PhaseAnalyzer
 import com.hrv.biofeedback.domain.dsp.RespiratorySignalExtractor
+import com.hrv.biofeedback.domain.dsp.SignalQualityMonitor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,7 +31,8 @@ object DspModule {
         peakTroughAnalyzer: PeakTroughAnalyzer,
         nonlinearAnalyzer: NonlinearAnalyzer,
         crossSpectralAnalyzer: CrossSpectralAnalyzer,
-        respiratoryExtractor: RespiratorySignalExtractor
+        respiratoryExtractor: RespiratorySignalExtractor,
+        signalQualityMonitor: SignalQualityMonitor
     ): HrvProcessor = HrvProcessor(
         artifactDetector,
         splineInterpolator,
@@ -40,6 +42,7 @@ object DspModule {
         peakTroughAnalyzer,
         nonlinearAnalyzer,
         crossSpectralAnalyzer,
-        respiratoryExtractor
+        respiratoryExtractor,
+        signalQualityMonitor
     )
 }

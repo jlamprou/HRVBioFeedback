@@ -14,11 +14,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AirlineSeatReclineNormal
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -195,7 +197,7 @@ fun HomeScreen(
             // Morning check — prominent placement
             ActionCard(
                 title = "Morning Check (2 min)",
-                icon = Icons.Default.FitnessCenter,
+                icon = Icons.Filled.Notifications,
                 color = CoherenceHigh,
                 onClick = onNavigateToMorningCheck,
                 modifier = Modifier.fillMaxWidth()
@@ -210,7 +212,7 @@ fun HomeScreen(
             ) {
                 ActionCard(
                     title = "Start Training",
-                    icon = Icons.Default.FitnessCenter,
+                    icon = Icons.Filled.FitnessCenter,
                     color = Primary,
                     onClick = onNavigateToTraining,
                     modifier = Modifier.weight(1f)
@@ -233,14 +235,14 @@ fun HomeScreen(
             ) {
                 ActionCard(
                     title = "Live Metrics",
-                    icon = Icons.Default.FitnessCenter,
+                    icon = Icons.Filled.ShowChart,
                     color = ChartLine,
                     onClick = onNavigateToLive,
                     modifier = Modifier.weight(1f)
                 )
                 ActionCard(
                     title = "Full Report",
-                    icon = Icons.Default.Search,
+                    icon = Icons.Filled.List,
                     color = LfPowerColor,
                     onClick = onNavigateToEvaluation,
                     modifier = Modifier.weight(1f)

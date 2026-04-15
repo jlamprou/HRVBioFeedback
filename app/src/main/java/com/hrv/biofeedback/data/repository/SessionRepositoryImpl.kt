@@ -70,25 +70,12 @@ class SessionRepositoryImpl @Inject constructor(
         endTime: Long,
         breathingRate: Double,
         rrIntervals: List<Pair<Long, Double>>,
-        metricsSnapshots: List<HrvMetrics>
+        metricsSnapshots: List<HrvMetrics>,
+        artifactRate: Double
     ): Long {
         val avgMetrics = averageMetrics(metricsSnapshots)
-
         val sessionId = sessionDao.insert(
-            SessionEntity(
-                type = SessionType.TRAINING.name,
-                startTime = startTime,
-                endTime = endTime,
-                durationSeconds = ((endTime - startTime) / 1000).toInt(),
-                averageHr = avgMetrics.hr.toDouble(),
-                averageRmssd = avgMetrics.rmssd,
-                averageSdnn = avgMetrics.sdnn,
-                averageLfPower = avgMetrics.lfPower,
-                averageHfPower = avgMetrics.hfPower,
-                averageCoherence = avgMetrics.coherenceScore,
-                averagePeakTrough = avgMetrics.peakTroughAmplitude,
-                breathingRate = breathingRate
-            )
+            avgMetrics.toSessionEntity(SessionType.TRAINING, startTime, endTime, breathingRate, artifactRate)
         )
 
         saveRrIntervals(sessionId, rrIntervals)
@@ -102,25 +89,14 @@ class SessionRepositoryImpl @Inject constructor(
         endTime: Long,
         result: RfAssessmentResult,
         rrIntervals: List<Pair<Long, Double>>,
-        metricsSnapshots: List<HrvMetrics>
+        metricsSnapshots: List<HrvMetrics>,
+        artifactRate: Double
     ): Long {
         val avgMetrics = averageMetrics(metricsSnapshots)
-
         val sessionId = sessionDao.insert(
-            SessionEntity(
-                type = SessionType.ASSESSMENT.name,
-                startTime = startTime,
-                endTime = endTime,
-                durationSeconds = ((endTime - startTime) / 1000).toInt(),
-                averageHr = avgMetrics.hr.toDouble(),
-                averageRmssd = avgMetrics.rmssd,
-                averageSdnn = avgMetrics.sdnn,
-                averageLfPower = avgMetrics.lfPower,
-                averageHfPower = avgMetrics.hfPower,
-                averageCoherence = avgMetrics.coherenceScore,
-                averagePeakTrough = avgMetrics.peakTroughAmplitude,
-                breathingRate = result.optimalRate,
-                rfResult = result.optimalRate
+            avgMetrics.toSessionEntity(
+                SessionType.ASSESSMENT, startTime, endTime,
+                result.optimalRate, artifactRate, rfResult = result.optimalRate
             )
         )
 
@@ -152,25 +128,12 @@ class SessionRepositoryImpl @Inject constructor(
         startTime: Long,
         endTime: Long,
         rrIntervals: List<Pair<Long, Double>>,
-        metricsSnapshots: List<HrvMetrics>
+        metricsSnapshots: List<HrvMetrics>,
+        artifactRate: Double
     ): Long {
         val avgMetrics = averageMetrics(metricsSnapshots)
-
         val sessionId = sessionDao.insert(
-            SessionEntity(
-                type = SessionType.MORNING_CHECK.name,
-                startTime = startTime,
-                endTime = endTime,
-                durationSeconds = ((endTime - startTime) / 1000).toInt(),
-                averageHr = avgMetrics.hr.toDouble(),
-                averageRmssd = avgMetrics.rmssd,
-                averageSdnn = avgMetrics.sdnn,
-                averageLfPower = avgMetrics.lfPower,
-                averageHfPower = avgMetrics.hfPower,
-                averageCoherence = avgMetrics.coherenceScore,
-                averagePeakTrough = avgMetrics.peakTroughAmplitude,
-                breathingRate = 0.0 // Natural breathing, not paced
-            )
+            avgMetrics.toSessionEntity(SessionType.MORNING_CHECK, startTime, endTime, 0.0, artifactRate)
         )
 
         saveRrIntervals(sessionId, rrIntervals)
@@ -216,11 +179,20 @@ class SessionRepositoryImpl @Inject constructor(
                     hr = m.hr,
                     rmssd = m.rmssd,
                     sdnn = m.sdnn,
+                    pnn50 = m.pnn50,
                     lfPower = m.lfPower,
                     hfPower = m.hfPower,
+                    lfHfRatio = m.lfHfRatio,
                     coherenceScore = m.coherenceScore,
                     peakFrequency = m.peakFrequency,
-                    peakTroughAmplitude = m.peakTroughAmplitude
+                    peakTroughAmplitude = m.peakTroughAmplitude,
+                    sd1 = m.sd1,
+                    sd2 = m.sd2,
+                    dfaAlpha1 = m.dfaAlpha1,
+                    sampleEntropy = m.sampleEntropy,
+                    cardiorespCoherence = m.cardiorespCoherence,
+                    breathingRate = m.breathingRate,
+                    cardiorespPhase = m.cardiorespPhase
                 )
             }
         )
@@ -228,7 +200,6 @@ class SessionRepositoryImpl @Inject constructor(
 
     private fun averageMetrics(snapshots: List<HrvMetrics>): HrvMetrics {
         if (snapshots.isEmpty()) return HrvMetrics()
-        // Filter out initial zero-value snapshots (before enough data accumulated)
         val valid = snapshots.filter { it.lfPower > 0 || it.rmssd > 0 }
         if (valid.isEmpty()) return HrvMetrics()
 
@@ -236,13 +207,53 @@ class SessionRepositoryImpl @Inject constructor(
             hr = valid.map { it.hr }.average().toInt(),
             rmssd = valid.map { it.rmssd }.average(),
             sdnn = valid.map { it.sdnn }.average(),
+            pnn50 = valid.map { it.pnn50 }.average(),
             lfPower = valid.map { it.lfPower }.average(),
             hfPower = valid.map { it.hfPower }.average(),
+            lfHfRatio = valid.map { it.lfHfRatio }.average(),
             coherenceScore = valid.map { it.coherenceScore }.average(),
             peakFrequency = valid.map { it.peakFrequency }.average(),
-            peakTroughAmplitude = valid.map { it.peakTroughAmplitude }.average()
+            peakTroughAmplitude = valid.map { it.peakTroughAmplitude }.average(),
+            sd1 = valid.map { it.sd1 }.average(),
+            sd2 = valid.map { it.sd2 }.average(),
+            dfaAlpha1 = valid.filter { it.dfaAlpha1 > 0 }.let { if (it.isNotEmpty()) it.map { m -> m.dfaAlpha1 }.average() else 0.0 },
+            sampleEntropy = valid.filter { it.sampleEntropy > 0 }.let { if (it.isNotEmpty()) it.map { m -> m.sampleEntropy }.average() else 0.0 },
+            cardiorespCoherence = valid.map { it.cardiorespCoherence }.average(),
+            breathingRate = valid.filter { it.breathingRate > 0 }.let { if (it.isNotEmpty()) it.map { m -> m.breathingRate }.average() else 0.0 }
         )
     }
+
+    private fun HrvMetrics.toSessionEntity(
+        type: SessionType,
+        startTime: Long,
+        endTime: Long,
+        breathingRate: Double,
+        artifactRate: Double = 0.0,
+        rfResult: Double? = null
+    ) = SessionEntity(
+        type = type.name,
+        startTime = startTime,
+        endTime = endTime,
+        durationSeconds = ((endTime - startTime) / 1000).toInt(),
+        averageHr = hr.toDouble(),
+        averageRmssd = rmssd,
+        averageSdnn = sdnn,
+        averagePnn50 = pnn50,
+        averageLfPower = lfPower,
+        averageHfPower = hfPower,
+        averageLfHfRatio = lfHfRatio,
+        averageCoherence = coherenceScore,
+        averagePeakTrough = peakTroughAmplitude,
+        breathingRate = breathingRate,
+        averageSd1 = sd1,
+        averageSd2 = sd2,
+        averageDfaAlpha1 = dfaAlpha1,
+        averageSampleEntropy = sampleEntropy,
+        averageCardiorespCoherence = cardiorespCoherence,
+        detectedBreathingRate = this.breathingRate,
+        artifactRatePercent = artifactRate,
+        rfResult = rfResult
+    )
 
     private fun SessionEntity.toSummary() = SessionSummary(
         id = id,
@@ -253,11 +264,20 @@ class SessionRepositoryImpl @Inject constructor(
         averageHr = averageHr,
         averageRmssd = averageRmssd,
         averageSdnn = averageSdnn,
+        averagePnn50 = averagePnn50,
         averageLfPower = averageLfPower,
         averageHfPower = averageHfPower,
+        averageLfHfRatio = averageLfHfRatio,
         averageCoherence = averageCoherence,
         averagePeakTrough = averagePeakTrough,
         breathingRate = breathingRate,
+        averageSd1 = averageSd1,
+        averageSd2 = averageSd2,
+        averageDfaAlpha1 = averageDfaAlpha1,
+        averageSampleEntropy = averageSampleEntropy,
+        averageCardiorespCoherence = averageCardiorespCoherence,
+        detectedBreathingRate = detectedBreathingRate,
+        artifactRatePercent = artifactRatePercent,
         rfResult = rfResult,
         notes = notes
     )
@@ -266,11 +286,20 @@ class SessionRepositoryImpl @Inject constructor(
         hr = hr,
         rmssd = rmssd,
         sdnn = sdnn,
+        pnn50 = pnn50,
         lfPower = lfPower,
         hfPower = hfPower,
+        lfHfRatio = lfHfRatio,
         coherenceScore = coherenceScore,
         peakFrequency = peakFrequency,
         peakTroughAmplitude = peakTroughAmplitude,
+        sd1 = sd1,
+        sd2 = sd2,
+        dfaAlpha1 = dfaAlpha1,
+        sampleEntropy = sampleEntropy,
+        cardiorespCoherence = cardiorespCoherence,
+        breathingRate = breathingRate,
+        cardiorespPhase = cardiorespPhase,
         timestamp = timestamp
     )
 

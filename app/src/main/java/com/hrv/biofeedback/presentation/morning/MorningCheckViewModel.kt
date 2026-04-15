@@ -154,12 +154,15 @@ class MorningCheckViewModel @Inject constructor(
                 startTime = startTime,
                 endTime = System.currentTimeMillis(),
                 rrIntervals = hrvProcessor.allRrIntervals,
-                metricsSnapshots = hrvProcessor.allMetricsSnapshots
+                metricsSnapshots = hrvProcessor.allMetricsSnapshots,
+                artifactRate = hrvProcessor.signalQuality.artifactRatePercent
             )
             _savedSessionId.value = sessionId
             loadTrend() // Refresh trend
         }
     }
+
+    fun getSignalQuality() = hrvProcessor.signalQuality.getReport()
 
     override fun onCleared() {
         super.onCleared()

@@ -192,7 +192,8 @@ class RfAssessmentViewModel @Inject constructor(
                 endTime = System.currentTimeMillis(),
                 result = assessmentResult,
                 rrIntervals = hrvProcessor.allRrIntervals,
-                metricsSnapshots = hrvProcessor.allMetricsSnapshots
+                metricsSnapshots = hrvProcessor.allMetricsSnapshots,
+                artifactRate = hrvProcessor.signalQuality.artifactRatePercent
             )
             _savedSessionId.value = sessionId
         }

@@ -218,31 +218,62 @@ fun SessionReportScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Frequency domain
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                MetricCard(
-                    label = "LF Power",
-                    value = "%.0f".format(summary.averageLfPower),
-                    unit = "ms\u00B2",
-                    valueColor = LfPowerColor,
-                    modifier = Modifier.weight(1f)
-                )
+                MetricCard("LF Power", "%.0f".format(summary.averageLfPower), "ms\u00B2",
+                    Modifier.weight(1f), valueColor = LfPowerColor)
                 Spacer(modifier = Modifier.width(8.dp))
-                MetricCard(
-                    label = "HF Power",
-                    value = "%.0f".format(summary.averageHfPower),
-                    unit = "ms\u00B2",
-                    valueColor = HfPowerColor,
-                    modifier = Modifier.weight(1f)
-                )
+                MetricCard("HF Power", "%.0f".format(summary.averageHfPower), "ms\u00B2",
+                    Modifier.weight(1f), valueColor = HfPowerColor)
                 Spacer(modifier = Modifier.width(8.dp))
-                MetricCard(
-                    label = "Breathing",
-                    value = "%.1f".format(summary.breathingRate),
-                    unit = "bpm",
-                    modifier = Modifier.weight(1f)
+                MetricCard("LF/HF", "%.2f".format(summary.averageLfHfRatio), "",
+                    Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Nonlinear metrics
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                MetricCard("SD1", "%.1f".format(summary.averageSd1), "ms", Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(8.dp))
+                MetricCard("SD2", "%.1f".format(summary.averageSd2), "ms", Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(8.dp))
+                MetricCard("DFA \u03B11", "%.2f".format(summary.averageDfaAlpha1), "",
+                    Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Entropy, respiratory, signal quality
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                MetricCard("SampEn", "%.3f".format(summary.averageSampleEntropy), "",
+                    Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(8.dp))
+                MetricCard("Breathing", "%.1f".format(
+                    if (summary.detectedBreathingRate > 0) summary.detectedBreathingRate
+                    else summary.breathingRate
+                ), "bpm", Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(8.dp))
+                MetricCard("CR Coh", "%.2f".format(summary.averageCardiorespCoherence), "",
+                    Modifier.weight(1f))
+            }
+
+            if (summary.artifactRatePercent > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Artifact rate: %.1f%%".format(summary.artifactRatePercent),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (summary.artifactRatePercent > 5) HfPowerColor else com.hrv.biofeedback.presentation.theme.TextSecondary,
+                    modifier = Modifier.padding(start = 4.dp)
                 )
             }
 

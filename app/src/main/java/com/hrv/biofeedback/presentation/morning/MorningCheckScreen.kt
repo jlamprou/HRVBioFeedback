@@ -212,6 +212,11 @@ fun MorningCheckScreen(
                         color = TextSecondary
                     )
 
+                    // Signal quality
+                    com.hrv.biofeedback.presentation.common.SignalQualityBar(
+                        report = viewModel.getSignalQuality()
+                    )
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Live HR display

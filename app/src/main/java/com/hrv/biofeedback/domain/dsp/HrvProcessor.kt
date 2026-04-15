@@ -24,7 +24,8 @@ class HrvProcessor @Inject constructor(
     private val peakTroughAnalyzer: PeakTroughAnalyzer,
     private val nonlinearAnalyzer: NonlinearAnalyzer,
     private val crossSpectralAnalyzer: CrossSpectralAnalyzer,
-    private val respiratoryExtractor: RespiratorySignalExtractor
+    private val respiratoryExtractor: RespiratorySignalExtractor,
+    val signalQuality: SignalQualityMonitor
 ) {
 
     companion object {
@@ -126,6 +127,7 @@ class HrvProcessor @Inject constructor(
         synchronized(ecgBuffer) { ecgBuffer.clear() }
         synchronized(_allRrIntervals) { _allRrIntervals.clear() }
         synchronized(_allMetricsSnapshots) { _allMetricsSnapshots.clear() }
+        signalQuality.reset()
         rrBuffer.clear()
         timeBuffer.clear()
         ecgRPeakIndices = emptyList()
@@ -150,7 +152,11 @@ class HrvProcessor @Inject constructor(
     fun processRrInterval(rrMs: Int, timestamp: Long, contactDetected: Boolean = true) {
         // Reject data when sensor has no skin contact — prevents garbage from
         // entering the pipeline when the user removes or adjusts the chest strap.
-        if (!contactDetected) return
+        // Track contact status in quality monitor (even when contact lost)
+        if (!contactDetected) {
+            signalQuality.recordBeat(timestamp, isArtifact = false, contactDetected = false)
+            return
+        }
 
         val rr = rrMs.toDouble()
         rrCount++
@@ -158,6 +164,9 @@ class HrvProcessor @Inject constructor(
         // Artifact detection
         val result = artifactDetector.detect(rr, rrBuffer.takeLast(10))
         val correctedRr = result.correctedRr
+
+        // Track signal quality
+        signalQuality.recordBeat(timestamp, result.isArtifact, contactDetected = true)
 
         // Store raw data
         synchronized(_allRrIntervals) { _allRrIntervals.add(Pair(timestamp, rr)) }

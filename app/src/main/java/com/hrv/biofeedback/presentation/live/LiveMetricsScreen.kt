@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hrv.biofeedback.domain.model.ConnectionState
 import com.hrv.biofeedback.presentation.common.CoherenceIndicator
 import com.hrv.biofeedback.presentation.common.HrTraceChart
+import com.hrv.biofeedback.presentation.common.SignalQualityBar
 import com.hrv.biofeedback.presentation.common.MetricCard
 import com.hrv.biofeedback.presentation.theme.CardDark
 import com.hrv.biofeedback.presentation.theme.ChartLine
@@ -119,6 +120,9 @@ fun LiveMetricsScreen(
                     fontSize = 64.sp
                 )
                 Text("bpm", style = MaterialTheme.typography.titleMedium, color = TextSecondary)
+
+                // Signal quality
+                SignalQualityBar(report = viewModel.getSignalQuality())
 
                 Spacer(modifier = Modifier.height(8.dp))
 

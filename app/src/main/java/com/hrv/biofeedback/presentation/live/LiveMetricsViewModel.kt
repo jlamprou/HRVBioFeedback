@@ -84,6 +84,8 @@ class LiveMetricsViewModel @Inject constructor(
         _isStreaming.value = false
     }
 
+    fun getSignalQuality() = hrvProcessor.signalQuality.getReport()
+
     override fun onCleared() {
         super.onCleared()
         stopStreaming()

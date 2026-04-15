@@ -167,7 +167,8 @@ class TrainingSessionViewModel @Inject constructor(
                 endTime = System.currentTimeMillis(),
                 breathingRate = _breathingRate.value,
                 rrIntervals = hrvProcessor.allRrIntervals,
-                metricsSnapshots = hrvProcessor.allMetricsSnapshots
+                metricsSnapshots = hrvProcessor.allMetricsSnapshots,
+                artifactRate = hrvProcessor.signalQuality.artifactRatePercent
             )
             _savedSessionId.value = sessionId
         }
@@ -300,6 +301,8 @@ class TrainingSessionViewModel @Inject constructor(
             }
         }
     }
+
+    fun getSignalQuality() = hrvProcessor.signalQuality.getReport()
 
     override fun onCleared() {
         super.onCleared()

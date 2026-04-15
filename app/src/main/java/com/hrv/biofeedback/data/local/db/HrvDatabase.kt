@@ -18,7 +18,7 @@ import com.hrv.biofeedback.data.local.db.entity.SessionEntity
         MetricsSnapshotEntity::class,
         RfAssessmentEntity::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class HrvDatabase : RoomDatabase() {
