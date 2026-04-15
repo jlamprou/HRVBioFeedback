@@ -24,8 +24,8 @@ A scientifically validated Android app for Heart Rate Variability biofeedback an
 - Real-time coaching engine with metric-based tips
 - Signal quality monitoring (contact, artifacts, dropouts, motion)
 
-### Morning 2-Min Baseline Check
-- Resting HRV measurement per Plews et al. (2013)
+### Morning 5-Min Baseline Check
+- Resting HRV measurement per Task Force (1996) 5-minute standard and Plews et al. (2013)
 - Natural breathing, no pacer
 - Trend tracking with 7-day rolling average comparison
 - Full history

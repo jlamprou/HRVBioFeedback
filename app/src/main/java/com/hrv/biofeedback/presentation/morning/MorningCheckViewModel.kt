@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class CheckState { NOT_STARTED, RECORDING, COMPLETED }
+enum class CheckState { NOT_STARTED, STABILIZING, RECORDING, COMPLETED }
 
 /**
  * 2-minute morning HRV baseline check.
@@ -67,7 +67,8 @@ class MorningCheckViewModel @Inject constructor(
     private var startTime: Long = 0
 
     companion object {
-        const val CHECK_DURATION_SECONDS = 120 // 2 minutes
+        const val CHECK_DURATION_SECONDS = 300 // 5 minutes — matches Task Force (1996) standard
+        const val STABILIZATION_SECONDS = 60  // 1-min stabilization before recording (Task Force recommends 5, we use 1 as practical compromise)
     }
 
     init {
@@ -80,40 +81,77 @@ class MorningCheckViewModel @Inject constructor(
         }
     }
 
+    // Breathing rate warning (detected from ACC)
+    private val _breathingWarning = MutableStateFlow<String?>(null)
+    val breathingWarning: StateFlow<String?> = _breathingWarning.asStateFlow()
+
     fun startCheck() {
         hrvProcessor.reset()
-        _state.value = CheckState.RECORDING
-        _elapsedSeconds.value = 0
+        _state.value = CheckState.STABILIZING
+        _elapsedSeconds.value = -STABILIZATION_SECONDS // Count up from negative
         _hrHistory.value = emptyList()
         _result.value = null
-        startTime = System.currentTimeMillis()
+        _breathingWarning.value = null
 
-        // Stream HR (natural breathing, no pacer)
+        // Start HR stream during stabilization (data discarded, just for display)
         hrStreamJob = viewModelScope.launch {
             try {
                 hrDataSource.streamHr()
                     .catch { }
                     .collect { sample ->
-                        sample.rrsMs.forEach { rr ->
-                            hrvProcessor.processRrInterval(rr, sample.timestamp, sample.contactDetected)
+                        if (_state.value == CheckState.RECORDING) {
+                            sample.rrsMs.forEach { rr ->
+                                hrvProcessor.processRrInterval(rr, sample.timestamp, sample.contactDetected)
+                            }
                         }
                         val seconds = _elapsedSeconds.value
                         val current = _hrHistory.value.toMutableList()
                         current.add(seconds to sample.hr)
-                        _hrHistory.value = if (current.size > 240) current.takeLast(240) else current
+                        _hrHistory.value = if (current.size > 600) current.takeLast(600) else current
                     }
             } catch (_: Exception) { }
         }
 
-        // Timer
+        // Start ACC for breathing rate monitoring
+        accStreamJob = viewModelScope.launch {
+            try {
+                hrDataSource.streamAcc()
+                    .catch { }
+                    .collect { sample -> hrvProcessor.addAccSample(sample.z.toDouble()) }
+            } catch (_: Exception) { }
+        }
+
+        // Timer: stabilization then recording
         timerJob = viewModelScope.launch {
+            // Phase 1: Stabilization (per Task Force 1996, 5-min stabilization recommended;
+            // we use 1 min as a practical compromise for daily routine)
+            while (_elapsedSeconds.value < 0) {
+                delay(1000)
+                _elapsedSeconds.value++
+            }
+
+            // Phase 2: Recording starts — reset processor for clean measurement
+            hrvProcessor.reset()
+            _state.value = CheckState.RECORDING
+            startTime = System.currentTimeMillis()
+
             while (_elapsedSeconds.value < CHECK_DURATION_SECONDS) {
                 delay(1000)
                 _elapsedSeconds.value++
+
+                // Check breathing rate from ACC (warn if too slow)
+                val detectedRate = hrvProcessor.metrics.value.breathingRate
+                if (detectedRate > 0.5 && detectedRate < 9.0) {
+                    _breathingWarning.value = "Slow breathing detected (%.0f bpm) — breathe naturally for accurate resting norms".format(detectedRate)
+                } else {
+                    _breathingWarning.value = null
+                }
             }
             finishCheck()
         }
     }
+
+    private var accStreamJob: Job? = null
 
     private fun finishCheck() {
         hrStreamJob?.cancel()
@@ -167,6 +205,7 @@ class MorningCheckViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         hrStreamJob?.cancel()
+        accStreamJob?.cancel()
         timerJob?.cancel()
     }
 }

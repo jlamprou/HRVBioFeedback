@@ -196,7 +196,7 @@ fun HomeScreen(
 
             // Morning check — prominent placement
             ActionCard(
-                title = "Morning Check (2 min)",
+                title = "Morning Check (5 min)",
                 icon = Icons.Filled.Notifications,
                 color = CoherenceHigh,
                 onClick = onNavigateToMorningCheck,

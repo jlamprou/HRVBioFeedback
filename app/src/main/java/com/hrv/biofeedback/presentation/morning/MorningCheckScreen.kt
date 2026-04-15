@@ -92,7 +92,7 @@ fun MorningCheckScreen(
             when (state) {
                 CheckState.NOT_STARTED -> {
                     Text(
-                        text = "2-Minute Baseline",
+                        text = "5-Minute Baseline",
                         style = MaterialTheme.typography.headlineLarge,
                         modifier = Modifier.padding(top = 16.dp)
                     )
@@ -112,7 +112,7 @@ fun MorningCheckScreen(
                                 text = "1. Lie down or sit comfortably\n" +
                                         "2. Put on your Polar H10 chest strap\n" +
                                         "3. Breathe naturally — do NOT pace your breathing\n" +
-                                        "4. Stay still and relaxed for 2 minutes\n\n" +
+                                        "4. Stay still and relaxed for 5 minutes\n\n" +
                                         "Best done first thing in the morning before getting out of bed. " +
                                         "This establishes your resting HRV baseline and tracks " +
                                         "how your biofeedback training improves autonomic function over time.",
@@ -134,7 +134,7 @@ fun MorningCheckScreen(
                         Button(onClick = { viewModel.startCheck() }) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Start 2-Min Check")
+                            Text("Start 5-Min Check")
                         }
                     }
 
@@ -190,6 +190,41 @@ fun MorningCheckScreen(
                     }
                 }
 
+                CheckState.STABILIZING -> {
+                    // Stabilization countdown
+                    val stabRemaining = -elapsed // elapsed is negative during stabilization
+                    Text(
+                        text = "Stabilizing...",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = CoherenceMedium
+                    )
+                    Text(
+                        text = "${stabRemaining}s",
+                        style = MaterialTheme.typography.displayLarge,
+                        color = CoherenceMedium,
+                        fontSize = 48.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Lie still — your cardiovascular system is adjusting.\nRecording starts automatically.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Show HR already during stabilization
+                    Text(
+                        text = "${metrics.hr}",
+                        style = MaterialTheme.typography.displayLarge,
+                        color = ChartLine,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 56.sp
+                    )
+                    Text("bpm", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                }
+
                 CheckState.RECORDING -> {
                     // Timer
                     val remaining = MorningCheckViewModel.CHECK_DURATION_SECONDS - elapsed
@@ -207,10 +242,21 @@ fun MorningCheckScreen(
                         color = Primary
                     )
                     Text(
-                        text = "Breathe naturally and stay still",
+                        text = "Recording — breathe naturally and stay still",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary
                     )
+
+                    // Breathing rate warning
+                    val breathingWarning by viewModel.breathingWarning.collectAsStateWithLifecycle()
+                    breathingWarning?.let { warning ->
+                        Text(
+                            text = warning,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CoherenceLow,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
 
                     // Signal quality
                     com.hrv.biofeedback.presentation.common.SignalQualityBar(

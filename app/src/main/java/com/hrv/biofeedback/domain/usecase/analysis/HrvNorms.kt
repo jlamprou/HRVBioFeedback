@@ -15,9 +15,8 @@ import javax.inject.Inject
  * - Huikuri et al. (2000) — DFA alpha1 as mortality predictor
  * - Kleiger et al. (1987) — SDNN < 50 ms 24h mortality cutoff
  *
- * IMPORTANT: These norms are for 5-minute supine recordings. Our 2-minute
- * morning checks produce comparable but not identical values. The relative
- * comparisons (above/below average for age) remain valid.
+ * These norms are for 5-minute supine recordings, which matches our
+ * 5-minute morning check protocol per the 1996 Task Force standard.
  */
 class HrvNorms @Inject constructor() {
 

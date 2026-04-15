@@ -121,14 +121,14 @@ class EvaluationViewModel @Inject constructor(
             val trainingCoherence = trainingSessions.map { it.startTime to it.averageCoherence }
             val trainingAmplitude = trainingSessions.map { it.startTime to it.averagePeakTrough }
 
-            // Generate insights
-            val insights = generateInsights(
-                morningChecks, trainingSessions, assessments,
-                weekMornings, monthMornings, daysSinceFirst
-            )
-
             // Age/sex-adjusted norms assessment
             val profile = userPreferences.profile.first()
+
+            // Generate insights (uses profile for age-adjusted thresholds)
+            val insights = generateInsights(
+                morningChecks, trainingSessions, assessments,
+                weekMornings, monthMornings, daysSinceFirst, profile
+            )
             val latestMorning = morningChecks.lastOrNull()
             val latestTraining = trainingSessions.lastOrNull()
             val metricAssessments = if (profile.isComplete && (latestMorning != null || latestTraining != null)) {
@@ -197,34 +197,57 @@ class EvaluationViewModel @Inject constructor(
         assessments: List<SessionSummary>,
         weekMornings: List<SessionSummary>,
         monthMornings: List<SessionSummary>,
-        daysSinceFirst: Int
+        daysSinceFirst: Int,
+        profile: com.hrv.biofeedback.data.local.preferences.UserProfile
     ): List<Insight> {
         val insights = mutableListOf<Insight>()
 
-        // --- RMSSD Health Assessment ---
+        // --- RMSSD Health Assessment (age-adjusted) ---
         morningChecks.lastOrNull()?.let { latest ->
             val rmssd = latest.averageRmssd
-            when {
-                rmssd >= 60 -> insights.add(Insight(
-                    "Excellent Parasympathetic Tone",
-                    "Your resting RMSSD of %.1f ms is well above average. This indicates strong vagal nerve function and good cardiovascular adaptability. Per Shaffer & Ginsberg (2017), healthy adults average ~42 ms.".format(rmssd),
-                    InsightType.POSITIVE
-                ))
-                rmssd >= 40 -> insights.add(Insight(
-                    "Good Baseline HRV",
-                    "Your resting RMSSD of %.1f ms is in the healthy range. The population norm is ~42 ms (Shaffer & Ginsberg 2017). Continue daily training to further improve.".format(rmssd),
-                    InsightType.POSITIVE
-                ))
-                rmssd >= 25 -> insights.add(Insight(
-                    "Moderate HRV — Room for Improvement",
-                    "Your resting RMSSD of %.1f ms is below the healthy average of ~42 ms. Regular biofeedback training can increase parasympathetic tone. The meta-analysis by Lehrer & Gevirtz (2014) shows consistent improvement with 10+ sessions.".format(rmssd),
-                    InsightType.WARNING
-                ))
-                else -> insights.add(Insight(
-                    "Low Baseline HRV",
-                    "Your resting RMSSD of %.1f ms is significantly below average (<25 ms). Low HRV is associated with increased health risk (Shaffer & Ginsberg 2017). However, HRV biofeedback has been shown to improve RMSSD even in clinical populations. Consistent daily training is recommended.".format(rmssd),
-                    InsightType.WARNING
-                ))
+            if (profile.isComplete) {
+                val norm = hrvNorms.rmssdNorm(profile.age, profile.sex)
+                when {
+                    rmssd >= norm.high -> insights.add(Insight(
+                        "Excellent Parasympathetic Tone",
+                        "Your resting RMSSD of %.1f ms is above the high range for your age group (%d, %s: >%.0f ms). This indicates strong vagal nerve function.".format(rmssd, profile.age, profile.sex, norm.high),
+                        InsightType.POSITIVE
+                    ))
+                    rmssd >= norm.mean -> insights.add(Insight(
+                        "Good Baseline HRV",
+                        "Your resting RMSSD of %.1f ms is above average for age %d %s (norm: %.0f ms). Continue daily training to improve further.".format(rmssd, profile.age, profile.sex, norm.mean),
+                        InsightType.POSITIVE
+                    ))
+                    rmssd >= norm.low -> insights.add(Insight(
+                        "Average HRV — Room for Improvement",
+                        "Your resting RMSSD of %.1f ms is in the lower-normal range for age %d %s (norm: %.0f-%.0f ms). Regular biofeedback training can increase parasympathetic tone (Lehrer & Gevirtz 2014).".format(rmssd, profile.age, profile.sex, norm.low, norm.high),
+                        InsightType.WARNING
+                    ))
+                    else -> insights.add(Insight(
+                        "Below-Average HRV for Your Age",
+                        "Your resting RMSSD of %.1f ms is below the expected range for age %d %s (norm: >%.0f ms). Low HRV is associated with increased health risk. HRV biofeedback has been shown to improve RMSSD even in clinical populations.".format(rmssd, profile.age, profile.sex, norm.low),
+                        InsightType.WARNING
+                    ))
+                }
+            } else {
+                // No profile — use population averages with caveat
+                when {
+                    rmssd >= 50 -> insights.add(Insight(
+                        "Good Baseline HRV",
+                        "Your resting RMSSD of %.1f ms is in the healthy range (population average ~42 ms, Nunan 2010). Set your age and sex in Settings for personalized norms.".format(rmssd),
+                        InsightType.POSITIVE
+                    ))
+                    rmssd >= 20 -> insights.add(Insight(
+                        "Moderate HRV",
+                        "Your resting RMSSD of %.1f ms. Set your age and sex in Settings — norms vary significantly by age (RMSSD declines ~3-4 ms per decade after 30).".format(rmssd),
+                        InsightType.NEUTRAL
+                    ))
+                    else -> insights.add(Insight(
+                        "Low Baseline HRV",
+                        "Your resting RMSSD of %.1f ms is low. Set your age and sex in Settings for accurate comparison — what's 'low' depends heavily on age.".format(rmssd),
+                        InsightType.WARNING
+                    ))
+                }
             }
         }
 
@@ -336,25 +359,39 @@ class EvaluationViewModel @Inject constructor(
             ))
         }
 
-        // --- Resting HR ---
+        // --- Resting HR (fitness-adjusted if profile available) ---
         morningChecks.lastOrNull()?.let { latest ->
             val hr = latest.averageHr
-            when {
-                hr <= 60 -> insights.add(Insight(
-                    "Excellent Resting Heart Rate",
-                    "Resting HR of %.0f bpm indicates good cardiovascular fitness. Lower resting HR is associated with better autonomic balance and longevity.".format(hr),
-                    InsightType.POSITIVE
-                ))
-                hr <= 75 -> insights.add(Insight(
-                    "Normal Resting Heart Rate",
-                    "Resting HR of %.0f bpm is in the normal range. Regular biofeedback training and aerobic exercise can help lower it over time.".format(hr),
-                    InsightType.NEUTRAL
-                ))
-                else -> insights.add(Insight(
-                    "Elevated Resting Heart Rate",
-                    "Resting HR of %.0f bpm is above typical. This may reflect stress, deconditioning, or stimulant use. HRV biofeedback can help reduce resting HR through improved vagal tone.".format(hr),
-                    InsightType.WARNING
-                ))
+            if (profile.isComplete) {
+                val norm = hrvNorms.restingHrNorm(profile.sex, profile.fitnessLevel)
+                when {
+                    hr <= norm.low -> insights.add(Insight(
+                        "Excellent Resting Heart Rate",
+                        "Resting HR of %.0f bpm is excellent for your profile. Lower resting HR indicates strong cardiovascular fitness and vagal tone.".format(hr),
+                        InsightType.POSITIVE
+                    ))
+                    hr <= norm.mean -> insights.add(Insight(
+                        "Good Resting Heart Rate",
+                        "Resting HR of %.0f bpm is good (norm for %s, %s: ~%.0f bpm).".format(hr, profile.sex, profile.fitnessLevel.ifEmpty { "average" }, norm.mean),
+                        InsightType.POSITIVE
+                    ))
+                    hr <= norm.high -> insights.add(Insight(
+                        "Normal Resting Heart Rate",
+                        "Resting HR of %.0f bpm is in the normal range. Regular biofeedback training and exercise can help lower it.".format(hr),
+                        InsightType.NEUTRAL
+                    ))
+                    else -> insights.add(Insight(
+                        "Elevated Resting Heart Rate",
+                        "Resting HR of %.0f bpm is above expected (norm: <%.0f bpm). The Copenhagen Heart Study found HR >80 bpm associated with increased cardiovascular risk.".format(hr, norm.high),
+                        InsightType.WARNING
+                    ))
+                }
+            } else {
+                when {
+                    hr <= 60 -> insights.add(Insight("Excellent Resting HR", "%.0f bpm — strong cardiovascular fitness.".format(hr), InsightType.POSITIVE))
+                    hr <= 75 -> insights.add(Insight("Normal Resting HR", "%.0f bpm — in the normal range.".format(hr), InsightType.NEUTRAL))
+                    else -> insights.add(Insight("Elevated Resting HR", "%.0f bpm — above typical. Set your profile in Settings for personalized assessment.".format(hr), InsightType.WARNING))
+                }
             }
         }
 
