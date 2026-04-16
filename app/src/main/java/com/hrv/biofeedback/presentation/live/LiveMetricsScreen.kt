@@ -62,6 +62,7 @@ fun LiveMetricsScreen(
 ) {
     val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
     val metrics by viewModel.metrics.collectAsStateWithLifecycle()
+    val currentHr by viewModel.currentHr.collectAsStateWithLifecycle()
     val isStreaming by viewModel.isStreaming.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -111,9 +112,9 @@ fun LiveMetricsScreen(
                     color = TextSecondary
                 )
             } else {
-                // HR Display
+                // HR Display (synced with graph)
                 Text(
-                    text = "${metrics.hr}",
+                    text = "${currentHr}",
                     style = MaterialTheme.typography.displayLarge,
                     color = ChartLine,
                     fontWeight = FontWeight.Bold,

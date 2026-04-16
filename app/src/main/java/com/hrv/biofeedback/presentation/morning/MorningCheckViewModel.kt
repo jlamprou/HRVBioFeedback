@@ -48,6 +48,7 @@ class MorningCheckViewModel @Inject constructor(
     private val _elapsedSeconds = MutableStateFlow(0)
     val elapsedSeconds: StateFlow<Int> = _elapsedSeconds.asStateFlow()
 
+    private val hrHistoryBuffer = ArrayDeque<Pair<Int, Int>>(300)
     private val _hrHistory = MutableStateFlow<List<Pair<Int, Int>>>(emptyList())
     val hrHistory: StateFlow<List<Pair<Int, Int>>> = _hrHistory.asStateFlow()
 
@@ -89,6 +90,7 @@ class MorningCheckViewModel @Inject constructor(
         hrvProcessor.reset()
         _state.value = CheckState.STABILIZING
         _elapsedSeconds.value = -STABILIZATION_SECONDS // Count up from negative
+        hrHistoryBuffer.clear()
         _hrHistory.value = emptyList()
         _result.value = null
         _breathingWarning.value = null
@@ -107,9 +109,9 @@ class MorningCheckViewModel @Inject constructor(
                             hrvProcessor.processRrInterval(rr, sample.timestamp, sample.contactDetected)
                         }
                         val seconds = _elapsedSeconds.value
-                        val current = _hrHistory.value.toMutableList()
-                        current.add(seconds to sample.hr)
-                        _hrHistory.value = if (current.size > 600) current.takeLast(600) else current
+                        hrHistoryBuffer.addLast(seconds to sample.hr)
+                        while (hrHistoryBuffer.size > 300) hrHistoryBuffer.removeFirst()
+                        _hrHistory.value = hrHistoryBuffer.toList()
                     }
             } catch (e: Exception) {
                 android.util.Log.e("MorningCheck", "HR stream failed", e)

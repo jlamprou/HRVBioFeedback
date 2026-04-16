@@ -25,6 +25,10 @@ A scientifically validated Android app for Heart Rate Variability biofeedback an
 - User watches real-time HR trace and times breathing to their heartbeat
 - Inhale when HR rises, exhale when HR falls — maximize oscillation amplitude
 - Develops interoceptive awareness and naturally tracks RF shifts
+- **Adaptive trend arrow**: linear regression over 4-beat window with RMSSD-derived noise threshold
+  - Green ↑ "Inhale" when HR rising, Blue ↓ "Exhale" when falling, gray dot at peaks/troughs
+  - Deadzone adapts to user's actual beat-to-beat noise level (trained users get responsive arrows, beginners get less flicker)
+- HR display and graph perfectly synced (same data source, same update cycle)
 - Large HR display + full graph + all 20+ metrics in real-time
 - Session best amplitude tracking
 

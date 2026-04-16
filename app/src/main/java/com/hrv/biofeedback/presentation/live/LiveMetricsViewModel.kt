@@ -24,6 +24,10 @@ class LiveMetricsViewModel @Inject constructor(
     val connectionState: StateFlow<ConnectionState> = hrDataSource.connectionState
     val metrics: StateFlow<HrvMetrics> = hrvProcessor.metrics
 
+    private val _currentHr = MutableStateFlow(0)
+    val currentHr: StateFlow<Int> = _currentHr.asStateFlow()
+
+    private val hrHistoryBuffer = ArrayDeque<Pair<Int, Int>>(300)
     private val _hrHistory = MutableStateFlow<List<Pair<Int, Int>>>(emptyList())
     val hrHistory: StateFlow<List<Pair<Int, Int>>> = _hrHistory.asStateFlow()
 
@@ -39,6 +43,7 @@ class LiveMetricsViewModel @Inject constructor(
         if (_isStreaming.value) return
         hrvProcessor.reset()
         _isStreaming.value = true
+        hrHistoryBuffer.clear()
         _hrHistory.value = emptyList()
         elapsedSeconds = 0
 
@@ -51,9 +56,10 @@ class LiveMetricsViewModel @Inject constructor(
                             hrvProcessor.processRrInterval(rr, sample.timestamp, sample.contactDetected)
                         }
                         elapsedSeconds = (hrvProcessor.allRrIntervals.size)
-                        val current = _hrHistory.value.toMutableList()
-                        current.add(elapsedSeconds to sample.hr)
-                        _hrHistory.value = if (current.size > 600) current.takeLast(600) else current
+                        _currentHr.value = sample.hr
+                        hrHistoryBuffer.addLast(elapsedSeconds to sample.hr)
+                        while (hrHistoryBuffer.size > 300) hrHistoryBuffer.removeFirst()
+                        _hrHistory.value = hrHistoryBuffer.toList()
                     }
             } catch (_: Exception) {
                 _isStreaming.value = false

@@ -60,6 +60,8 @@ fun FreeTrainingScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
     val metrics by viewModel.metrics.collectAsStateWithLifecycle()
+    val currentHr by viewModel.currentHr.collectAsStateWithLifecycle()
+    val hrTrend by viewModel.hrTrend.collectAsStateWithLifecycle()
     val elapsed by viewModel.elapsedSeconds.collectAsStateWithLifecycle()
     val hrHistory by viewModel.hrHistory.collectAsStateWithLifecycle()
     val bestAmplitude by viewModel.bestAmplitude.collectAsStateWithLifecycle()
@@ -151,14 +153,38 @@ fun FreeTrainingScreen(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // HR centerpiece
-                    Text(
-                        text = "${metrics.hr}",
-                        style = MaterialTheme.typography.displayLarge,
-                        color = ChartLine,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 64.sp
-                    )
+                    // HR centerpiece with trend arrow (synced with graph)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${currentHr}",
+                            style = MaterialTheme.typography.displayLarge,
+                            color = ChartLine,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 64.sp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        // Trend arrow: sized to match HR text, color-coded
+                        val (arrow, arrowColor, arrowLabel) = when (hrTrend) {
+                            1 -> Triple("\u2191", CoherenceHigh, "Inhale")    // ↑ green
+                            -1 -> Triple("\u2193", LfPowerColor, "Exhale")   // ↓ blue
+                            else -> Triple("\u2022", TextSecondary, "")       // · gray dot at peak/trough
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = arrow,
+                                fontSize = 40.sp,
+                                color = arrowColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (arrowLabel.isNotEmpty()) {
+                                Text(
+                                    text = arrowLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = arrowColor
+                                )
+                            }
+                        }
+                    }
                     Text("bpm", style = MaterialTheme.typography.titleMedium, color = TextSecondary)
 
                     Spacer(Modifier.height(8.dp))

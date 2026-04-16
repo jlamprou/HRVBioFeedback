@@ -68,7 +68,8 @@ class TrainingSessionViewModel @Inject constructor(
     private val _breathingRate = MutableStateFlow(6.0)
     val breathingRate: StateFlow<Double> = _breathingRate.asStateFlow()
 
-    private val _hrHistory = MutableStateFlow<List<Pair<Int, Int>>>(emptyList()) // (seconds, hr)
+    private val hrHistoryBuffer = ArrayDeque<Pair<Int, Int>>(300)
+    private val _hrHistory = MutableStateFlow<List<Pair<Int, Int>>>(emptyList())
     val hrHistory: StateFlow<List<Pair<Int, Int>>> = _hrHistory.asStateFlow()
 
     private val _savedSessionId = MutableStateFlow<Long?>(null)
@@ -120,6 +121,7 @@ class TrainingSessionViewModel @Inject constructor(
         hrvProcessor.setBreathingRate(initialBreathingRate)
         _sessionState.value = SessionState.RUNNING
         _elapsedSeconds.value = 0
+        hrHistoryBuffer.clear()
         _hrHistory.value = emptyList()
         startTime = System.currentTimeMillis()
 
@@ -188,13 +190,9 @@ class TrainingSessionViewModel @Inject constructor(
                         }
                         // Add to HR history for chart
                         val seconds = _elapsedSeconds.value
-                        val current = _hrHistory.value.toMutableList()
-                        current.add(seconds to sample.hr)
-                        if (current.size > 480) {
-                            _hrHistory.value = current.takeLast(480)
-                        } else {
-                            _hrHistory.value = current
-                        }
+                        hrHistoryBuffer.addLast(seconds to sample.hr)
+                        while (hrHistoryBuffer.size > 300) hrHistoryBuffer.removeFirst()
+                        _hrHistory.value = hrHistoryBuffer.toList()
 
                         // Update coaching tip
                         val tip = breathingCoach.analyze(
