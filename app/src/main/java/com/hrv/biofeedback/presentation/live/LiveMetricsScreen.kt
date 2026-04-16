@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hrv.biofeedback.domain.model.ConnectionState
-import com.hrv.biofeedback.presentation.common.CoherenceIndicator
+import com.hrv.biofeedback.presentation.common.BiofeedbackIndicator
 import com.hrv.biofeedback.presentation.common.HrTraceChart
 import com.hrv.biofeedback.presentation.common.SignalQualityBar
 import com.hrv.biofeedback.presentation.common.MetricCard
@@ -134,7 +134,7 @@ fun LiveMetricsScreen(
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-                CoherenceIndicator(level = metrics.coherenceLevel)
+                BiofeedbackIndicator(metrics = metrics)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -185,8 +185,8 @@ fun LiveMetricsScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // === COHERENCE ===
-                SectionHeader("HeartMath Coherence")
+                // === COHERENCE (secondary — proprietary HeartMath metric) ===
+                SectionHeader("HeartMath Coherence (proprietary)")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly

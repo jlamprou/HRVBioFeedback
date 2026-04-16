@@ -93,47 +93,63 @@ class MorningCheckViewModel @Inject constructor(
         _result.value = null
         _breathingWarning.value = null
 
-        // Start HR stream during stabilization (data discarded, just for display)
+        startTime = System.currentTimeMillis()
+
+        // Start HR stream — processes RR during both stabilization and recording.
+        // During stabilization the data warms up the display; processor is reset
+        // at recording start for clean metrics.
         hrStreamJob = viewModelScope.launch {
             try {
                 hrDataSource.streamHr()
-                    .catch { }
+                    .catch { e -> android.util.Log.e("MorningCheck", "HR stream error", e) }
                     .collect { sample ->
-                        if (_state.value == CheckState.RECORDING) {
-                            sample.rrsMs.forEach { rr ->
-                                hrvProcessor.processRrInterval(rr, sample.timestamp, sample.contactDetected)
-                            }
+                        sample.rrsMs.forEach { rr ->
+                            hrvProcessor.processRrInterval(rr, sample.timestamp, sample.contactDetected)
                         }
                         val seconds = _elapsedSeconds.value
                         val current = _hrHistory.value.toMutableList()
                         current.add(seconds to sample.hr)
                         _hrHistory.value = if (current.size > 600) current.takeLast(600) else current
                     }
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                android.util.Log.e("MorningCheck", "HR stream failed", e)
+            }
         }
 
         // Start ACC for breathing rate monitoring
         accStreamJob = viewModelScope.launch {
             try {
                 hrDataSource.streamAcc()
-                    .catch { }
+                    .catch { e -> android.util.Log.e("MorningCheck", "ACC stream error", e) }
                     .collect { sample -> hrvProcessor.addAccSample(sample.z.toDouble()) }
+            } catch (e: Exception) {
+                android.util.Log.e("MorningCheck", "ACC stream failed", e)
+            }
+        }
+
+        // Start ECG — required for accurate contact detection on Polar H10.
+        // The H10 uses ECG electrode impedance to determine skin contact;
+        // without an active ECG stream, contactStatus defaults to false.
+        ecgStreamJob = viewModelScope.launch {
+            try {
+                hrDataSource.streamEcg()
+                    .catch { }
+                    .collect { sample -> hrvProcessor.addEcgSample(sample.voltage) }
             } catch (_: Exception) { }
         }
 
         // Timer: stabilization then recording
         timerJob = viewModelScope.launch {
-            // Phase 1: Stabilization (per Task Force 1996, 5-min stabilization recommended;
-            // we use 1 min as a practical compromise for daily routine)
+            // Phase 1: Stabilization
             while (_elapsedSeconds.value < 0) {
                 delay(1000)
                 _elapsedSeconds.value++
             }
 
             // Phase 2: Recording starts — reset processor for clean measurement
+            // (stabilization data is discarded, fresh start for actual metrics)
             hrvProcessor.reset()
             _state.value = CheckState.RECORDING
-            startTime = System.currentTimeMillis()
 
             while (_elapsedSeconds.value < CHECK_DURATION_SECONDS) {
                 delay(1000)
@@ -152,6 +168,7 @@ class MorningCheckViewModel @Inject constructor(
     }
 
     private var accStreamJob: Job? = null
+    private var ecgStreamJob: Job? = null
 
     private fun finishCheck() {
         hrStreamJob?.cancel()
@@ -169,14 +186,22 @@ class MorningCheckViewModel @Inject constructor(
         }
 
         _result.value = MorningCheckResult(
+            hr = currentMetrics.hr,
             rmssd = currentMetrics.rmssd,
             sdnn = currentMetrics.sdnn,
-            hr = currentMetrics.hr,
             pnn50 = currentMetrics.pnn50,
+            lfPower = currentMetrics.lfPower,
+            hfPower = currentMetrics.hfPower,
+            lfHfRatio = currentMetrics.lfHfRatio,
+            totalPower = currentMetrics.totalPower,
+            coherenceScore = currentMetrics.coherenceScore,
+            peakFrequency = currentMetrics.peakFrequency,
             sd1 = currentMetrics.sd1,
             sd2 = currentMetrics.sd2,
             dfaAlpha1 = currentMetrics.dfaAlpha1,
-            lfHfRatio = currentMetrics.lfHfRatio,
+            sampleEntropy = currentMetrics.sampleEntropy,
+            breathingRate = currentMetrics.breathingRate,
+            cardiorespCoherence = currentMetrics.cardiorespCoherence,
             rmssdChange = if (previousRmssd != null && previousRmssd > 0)
                 ((currentMetrics.rmssd - previousRmssd) / previousRmssd * 100) else null,
             hrChange = if (previousHr != null && previousHr > 0)
@@ -206,20 +231,29 @@ class MorningCheckViewModel @Inject constructor(
         super.onCleared()
         hrStreamJob?.cancel()
         accStreamJob?.cancel()
+        ecgStreamJob?.cancel()
         timerJob?.cancel()
     }
 }
 
 data class MorningCheckResult(
+    val hr: Int,
     val rmssd: Double,
     val sdnn: Double,
-    val hr: Int,
     val pnn50: Double,
+    val lfPower: Double,
+    val hfPower: Double,
+    val lfHfRatio: Double,
+    val totalPower: Double,
+    val coherenceScore: Double,
+    val peakFrequency: Double,
     val sd1: Double,
     val sd2: Double,
     val dfaAlpha1: Double,
-    val lfHfRatio: Double,
-    val rmssdChange: Double?, // % change vs 7-day average, null if no history
+    val sampleEntropy: Double,
+    val breathingRate: Double,
+    val cardiorespCoherence: Double,
+    val rmssdChange: Double?,
     val hrChange: Double?,
     val totalChecks: Int
 )

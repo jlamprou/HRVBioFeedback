@@ -252,10 +252,10 @@ class HrvNorms @Inject constructor() {
 
         if (coherenceScore > 0) {
             val cohNorm = NormRange(0.5, 1.5, 3.0, "")
-            val explanation = "HeartMath coherence measures how concentrated your HRV is at a single " +
-                "frequency. Higher scores mean your heart rhythm is more ordered and synchronized " +
-                "with your breathing. Beginners typically score 0-0.5; after 2-3 months of practice, " +
-                "sustained scores of 1.0-2.0 are common. Experienced practitioners reach 3.0+."
+            val explanation = "HeartMath coherence is a proprietary metric (not used in mainstream research) " +
+                "that measures spectral concentration at a single frequency. The standard research metrics " +
+                "for biofeedback effectiveness are LF power and peak-to-trough amplitude (Lehrer & Gevirtz 2014). " +
+                "Coherence is included for users familiar with HeartMath products."
             assessments.add(assess("Coherence Score", coherenceScore, cohNorm, explanation))
         }
 

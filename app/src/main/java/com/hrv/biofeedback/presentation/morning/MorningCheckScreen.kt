@@ -285,16 +285,43 @@ fun MorningCheckScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Live metrics building up
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
+                    // Time-domain
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         MetricCard("RMSSD", "%.1f".format(metrics.rmssd), "ms", Modifier.weight(1f))
                         Spacer(Modifier.width(8.dp))
                         MetricCard("SDNN", "%.1f".format(metrics.sdnn), "ms", Modifier.weight(1f))
                         Spacer(Modifier.width(8.dp))
                         MetricCard("pNN50", "%.1f".format(metrics.pnn50), "%", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Frequency-domain
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        MetricCard("LF", "%.0f".format(metrics.lfPower), "ms\u00B2", Modifier.weight(1f), valueColor = LfPowerColor)
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("HF", "%.0f".format(metrics.hfPower), "ms\u00B2", Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("LF/HF", "%.2f".format(metrics.lfHfRatio), "", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Nonlinear
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        MetricCard("SD1", "%.1f".format(metrics.sd1), "ms", Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("SD2", "%.1f".format(metrics.sd2), "ms", Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("DFA \u03B11", "%.2f".format(metrics.dfaAlpha1), "", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Entropy + respiratory
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        MetricCard("SampEn", "%.3f".format(metrics.sampleEntropy), "", Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("Coherence", "%.2f".format(metrics.coherenceScore), "", Modifier.weight(1f), valueColor = Primary)
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("Breath", "%.1f".format(metrics.breathingRate), "bpm", Modifier.weight(1f))
                     }
                 }
 
@@ -355,32 +382,56 @@ fun MorningCheckScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // All metrics
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
+                    // Time-domain
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         MetricCard("HR", "${r.hr}", "bpm", Modifier.weight(1f), valueColor = ChartLine)
                         Spacer(Modifier.width(8.dp))
                         MetricCard("SDNN", "%.1f".format(r.sdnn), "ms", Modifier.weight(1f))
                         Spacer(Modifier.width(8.dp))
                         MetricCard("pNN50", "%.1f".format(r.pnn50), "%", Modifier.weight(1f))
                     }
+                    Spacer(Modifier.height(8.dp))
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    // Frequency-domain
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        MetricCard("LF", "%.0f".format(r.lfPower), "ms\u00B2", Modifier.weight(1f), valueColor = LfPowerColor)
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("HF", "%.0f".format(r.hfPower), "ms\u00B2", Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("LF/HF", "%.2f".format(r.lfHfRatio), "", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
+                    // Coherence
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        MetricCard("Coherence", "%.2f".format(r.coherenceScore), "", Modifier.weight(1f), valueColor = Primary)
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("CR Coh", "%.2f".format(r.cardiorespCoherence), "", Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("Breath", "%.1f".format(r.breathingRate), "bpm", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Nonlinear
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         MetricCard("SD1", "%.1f".format(r.sd1), "ms", Modifier.weight(1f))
                         Spacer(Modifier.width(8.dp))
                         MetricCard("SD2", "%.1f".format(r.sd2), "ms", Modifier.weight(1f))
                         Spacer(Modifier.width(8.dp))
                         MetricCard("DFA \u03B11", "%.2f".format(r.dfaAlpha1), "", Modifier.weight(1f))
                     }
+                    Spacer(Modifier.height(8.dp))
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        MetricCard("SampEn", "%.3f".format(r.sampleEntropy), "", Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("SD1/SD2", "%.2f".format(
+                            if (r.sd2 > 0) r.sd1 / r.sd2 else 0.0
+                        ), "", Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        MetricCard("Total", "%.0f".format(r.totalPower), "ms\u00B2", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
 
                     // Interpretation
                     Card(

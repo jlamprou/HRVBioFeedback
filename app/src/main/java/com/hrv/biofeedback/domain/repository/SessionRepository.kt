@@ -88,6 +88,7 @@ interface SessionRepository {
 
     suspend fun getMorningCheckTrend(): List<SessionSummary>
 
+    suspend fun convertSessionType(sessionId: Long, newType: SessionType)
     suspend fun deleteSession(sessionId: Long)
     suspend fun getSessionCount(): Int
 }

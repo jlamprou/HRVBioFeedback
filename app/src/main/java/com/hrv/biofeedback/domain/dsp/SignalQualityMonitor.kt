@@ -6,11 +6,8 @@ import javax.inject.Inject
  * Monitors real-time signal quality from the Polar H10 and generates
  * user-facing alerts when data reliability is compromised.
  *
- * Tracks:
- * - Sensor contact stability (from Polar contactStatus)
- * - Artifact rate (percentage of rejected RR intervals)
- * - RR interval dropout (gaps in data stream)
- * - Motion contamination (excessive ACC variance during resting measurements)
+ * Uses both the SDK's contactStatus flag (reliable when ECG streaming is active)
+ * and actual data flow as a fallback.
  */
 class SignalQualityMonitor @Inject constructor() {
 
@@ -29,79 +26,73 @@ class SignalQualityMonitor @Inject constructor() {
 
     private var totalBeats = 0
     private var artifactBeats = 0
-    private var contactLossCount = 0
     private var lastBeatTimestamp = 0L
-    private var dropoutCount = 0 // Gaps > 3 seconds
-    private val recentContactStatus = mutableListOf<Boolean>() // Last 30 samples
-    private val recentAccVariance = mutableListOf<Double>()
+    private var dropoutCount = 0
+    private val recentContactStatus = mutableListOf<Boolean>()
 
     companion object {
-        private const val ARTIFACT_RATE_WARNING = 0.05  // 5%
-        private const val ARTIFACT_RATE_CRITICAL = 0.15 // 15%
-        private const val DROPOUT_GAP_MS = 3000L        // 3 seconds
+        private const val ARTIFACT_RATE_WARNING = 0.05
+        private const val ARTIFACT_RATE_CRITICAL = 0.15
+        private const val DROPOUT_GAP_MS = 3000L
         private const val CONTACT_WINDOW = 30
-        private const val CONTACT_LOSS_WARNING = 0.10   // 10% of recent samples
-        private const val MOTION_VARIANCE_THRESHOLD = 5000.0 // mg² — high motion
+        private const val CONTACT_LOSS_WARNING = 0.10
+        private const val NO_DATA_TIMEOUT_MS = 5000L
     }
 
     fun reset() {
         totalBeats = 0
         artifactBeats = 0
-        contactLossCount = 0
         lastBeatTimestamp = 0L
         dropoutCount = 0
         recentContactStatus.clear()
-        recentAccVariance.clear()
     }
 
-    /**
-     * Record a new RR interval processing result.
-     */
     fun recordBeat(timestamp: Long, isArtifact: Boolean, contactDetected: Boolean) {
         totalBeats++
         if (isArtifact) artifactBeats++
 
-        // Track contact status
         recentContactStatus.add(contactDetected)
         if (recentContactStatus.size > CONTACT_WINDOW) recentContactStatus.removeAt(0)
-        if (!contactDetected) contactLossCount++
 
-        // Check for data dropout
         if (lastBeatTimestamp > 0 && timestamp - lastBeatTimestamp > DROPOUT_GAP_MS) {
             dropoutCount++
         }
         lastBeatTimestamp = timestamp
     }
 
-    /**
-     * Record accelerometer variance for motion detection.
-     * High variance during a resting measurement indicates the user is moving.
-     */
-    fun recordAccVariance(variance: Double) {
-        recentAccVariance.add(variance)
-        if (recentAccVariance.size > 10) recentAccVariance.removeAt(0)
-    }
-
-    /**
-     * Generate the current quality report with all active alerts.
-     */
     fun getReport(): QualityReport {
         val alerts = mutableListOf<QualityAlert>()
+        val now = System.currentTimeMillis()
 
-        // --- Contact quality ---
-        if (recentContactStatus.size >= 5) {
+        // --- Contact: use SDK flag when available, data flow as fallback ---
+        val hasRecentData = lastBeatTimestamp > 0 && (now - lastBeatTimestamp) < NO_DATA_TIMEOUT_MS
+
+        if (!hasRecentData && totalBeats > 0) {
+            // No data arriving — genuine contact loss
+            alerts.add(QualityAlert(
+                "No data received — check chest strap contact",
+                Severity.CRITICAL
+            ))
+        } else if (hasRecentData && recentContactStatus.size >= 5) {
+            // Data is arriving — check SDK contact flag
             val contactLossRate = recentContactStatus.count { !it }.toDouble() / recentContactStatus.size
             if (contactLossRate >= 0.5) {
+                // SDK says no contact but data IS arriving — warn but don't alarm
                 alerts.add(QualityAlert(
-                    "Sensor contact lost — adjust chest strap position",
-                    Severity.CRITICAL
+                    "Weak electrode contact — moisten chest strap for better signal",
+                    Severity.INFO
                 ))
             } else if (contactLossRate >= CONTACT_LOSS_WARNING) {
                 alerts.add(QualityAlert(
-                    "Intermittent contact — check strap is snug and moistened",
-                    Severity.WARNING
+                    "Intermittent contact — check strap is snug",
+                    Severity.INFO
                 ))
             }
+        } else if (totalBeats == 0) {
+            alerts.add(QualityAlert(
+                "Waiting for sensor data...",
+                Severity.INFO
+            ))
         }
 
         // --- Artifact rate ---
@@ -109,42 +100,25 @@ class SignalQualityMonitor @Inject constructor() {
             val artifactRate = artifactBeats.toDouble() / totalBeats
             if (artifactRate >= ARTIFACT_RATE_CRITICAL) {
                 alerts.add(QualityAlert(
-                    "High artifact rate (%.0f%%) — metrics may be unreliable. Stay still and check strap.".format(artifactRate * 100),
+                    "High artifact rate (%.0f%%) — metrics may be unreliable".format(artifactRate * 100),
                     Severity.CRITICAL
                 ))
             } else if (artifactRate >= ARTIFACT_RATE_WARNING) {
                 alerts.add(QualityAlert(
-                    "Moderate artifacts (%.0f%%) — some metric accuracy may be reduced".format(artifactRate * 100),
+                    "Moderate artifacts (%.0f%%)".format(artifactRate * 100),
                     Severity.WARNING
                 ))
             }
         }
 
-        // --- Data dropouts ---
+        // --- Dropouts ---
         if (dropoutCount >= 3) {
             alerts.add(QualityAlert(
-                "Multiple data dropouts detected — Bluetooth connection may be unstable",
+                "Multiple data dropouts — keep phone close to strap",
                 Severity.WARNING
             ))
-        } else if (dropoutCount >= 1) {
-            alerts.add(QualityAlert(
-                "Brief data gap detected — keep phone close to chest strap",
-                Severity.INFO
-            ))
         }
 
-        // --- Motion during measurement ---
-        if (recentAccVariance.size >= 3) {
-            val avgVariance = recentAccVariance.average()
-            if (avgVariance > MOTION_VARIANCE_THRESHOLD) {
-                alerts.add(QualityAlert(
-                    "Motion detected — stay still for accurate HRV measurement",
-                    Severity.WARNING
-                ))
-            }
-        }
-
-        // --- Overall quality ---
         val overall = when {
             alerts.any { it.severity == Severity.CRITICAL } -> Quality.POOR
             alerts.any { it.severity == Severity.WARNING } -> Quality.FAIR
@@ -154,7 +128,6 @@ class SignalQualityMonitor @Inject constructor() {
         return QualityReport(overall, alerts)
     }
 
-    /** Current artifact rate as percentage (0-100). */
     val artifactRatePercent: Double
         get() = if (totalBeats > 0) (artifactBeats.toDouble() / totalBeats * 100) else 0.0
 }

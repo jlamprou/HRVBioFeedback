@@ -151,6 +151,10 @@ class SessionRepositoryImpl @Inject constructor(
         return result.map { it.toSummary() }
     }
 
+    override suspend fun convertSessionType(sessionId: Long, newType: SessionType) {
+        sessionDao.updateType(sessionId, newType.name)
+    }
+
     override suspend fun deleteSession(sessionId: Long) {
         sessionDao.delete(sessionId)
     }

@@ -150,13 +150,12 @@ class HrvProcessor @Inject constructor(
      * @param contactDetected Whether the sensor has skin contact (from Polar H10)
      */
     fun processRrInterval(rrMs: Int, timestamp: Long, contactDetected: Boolean = true) {
-        // Reject data when sensor has no skin contact — prevents garbage from
-        // entering the pipeline when the user removes or adjusts the chest strap.
-        // Track contact status in quality monitor (even when contact lost)
-        if (!contactDetected) {
-            signalQuality.recordBeat(timestamp, isArtifact = false, contactDetected = false)
-            return
-        }
+        // Track contact status for quality monitoring.
+        // NOTE: Polar H10 contactStatus is unreliable — it can report false even with
+        // good electrode contact and valid RR data. So we use it as a quality WARNING
+        // (shown to user via SignalQualityBar) but do NOT reject data based on it.
+        // If RR intervals are arriving, the sensor is working regardless of the flag.
+        signalQuality.recordBeat(timestamp, isArtifact = false, contactDetected = contactDetected)
 
         val rr = rrMs.toDouble()
         rrCount++

@@ -47,7 +47,7 @@ import com.hrv.biofeedback.domain.model.ConnectionState
 import com.hrv.biofeedback.presentation.common.BreathingPacer
 import com.hrv.biofeedback.presentation.common.HrTraceChart
 import com.hrv.biofeedback.presentation.common.SignalQualityBar
-import com.hrv.biofeedback.presentation.common.CoherenceIndicator
+import com.hrv.biofeedback.presentation.common.BiofeedbackIndicator
 import com.hrv.biofeedback.presentation.common.MetricCard
 import com.hrv.biofeedback.presentation.theme.ChartLine
 import com.hrv.biofeedback.presentation.theme.CoherenceHigh
@@ -226,8 +226,8 @@ fun TrainingSessionScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Coherence indicator
-                    CoherenceIndicator(level = metrics.coherenceLevel)
+                    // Biofeedback effectiveness (LF power + amplitude per Lehrer protocol)
+                    BiofeedbackIndicator(metrics = metrics)
 
                     // Coaching tip
                     val tip by viewModel.coachingTip.collectAsStateWithLifecycle()
@@ -287,13 +287,10 @@ fun TrainingSessionScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         MetricCard(
-                            label = "Coherence",
-                            value = "%.2f".format(metrics.coherenceScore),
-                            valueColor = when (metrics.coherenceLevel) {
-                                com.hrv.biofeedback.domain.model.CoherenceLevel.HIGH -> CoherenceHigh
-                                com.hrv.biofeedback.domain.model.CoherenceLevel.MEDIUM -> CoherenceMedium
-                                com.hrv.biofeedback.domain.model.CoherenceLevel.LOW -> CoherenceLow
-                            },
+                            label = "Amplitude",
+                            value = "%.1f".format(metrics.peakTroughAmplitude),
+                            unit = "bpm",
+                            valueColor = CoherenceHigh,
                             modifier = Modifier.weight(1f)
                         )
                     }

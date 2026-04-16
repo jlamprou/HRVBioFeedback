@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -62,6 +63,7 @@ fun HomeScreen(
     onNavigateToDevice: () -> Unit,
     onNavigateToAssessment: () -> Unit,
     onNavigateToTraining: () -> Unit,
+    onNavigateToFreeTraining: () -> Unit,
     onNavigateToLive: () -> Unit,
     onNavigateToMorningCheck: () -> Unit,
     onNavigateToEvaluation: () -> Unit,
@@ -205,18 +207,34 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Quick actions
+            // Training modes
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 ActionCard(
-                    title = "Start Training",
+                    title = "Guided Training",
                     icon = Icons.Filled.FitnessCenter,
                     color = Primary,
                     onClick = onNavigateToTraining,
                     modifier = Modifier.weight(1f)
                 )
+                ActionCard(
+                    title = "Advanced",
+                    icon = Icons.Filled.TrendingUp,
+                    color = CoherenceHigh,
+                    onClick = onNavigateToFreeTraining,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Assessment
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 ActionCard(
                     title = "Find RF",
                     icon = Icons.Default.Search,

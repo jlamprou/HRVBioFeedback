@@ -12,6 +12,7 @@ import com.hrv.biofeedback.presentation.history.HistoryScreen
 import com.hrv.biofeedback.presentation.home.HomeScreen
 import com.hrv.biofeedback.presentation.live.LiveMetricsScreen
 import com.hrv.biofeedback.presentation.evaluation.EvaluationScreen
+import com.hrv.biofeedback.presentation.freetraining.FreeTrainingScreen
 import com.hrv.biofeedback.presentation.morning.MorningCheckScreen
 import com.hrv.biofeedback.presentation.report.SessionReportScreen
 import com.hrv.biofeedback.presentation.settings.SettingsScreen
@@ -29,6 +30,7 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateToAssessment = { navController.navigate(NavRoutes.RfAssessment.route) },
                 onNavigateToTraining = { navController.navigate(NavRoutes.Training.route) },
                 onNavigateToLive = { navController.navigate(NavRoutes.LiveMetrics.route) },
+                onNavigateToFreeTraining = { navController.navigate(NavRoutes.FreeTraining.route) },
                 onNavigateToMorningCheck = { navController.navigate(NavRoutes.MorningCheck.route) },
                 onNavigateToEvaluation = { navController.navigate(NavRoutes.Evaluation.route) },
                 onNavigateToHistory = { navController.navigate(NavRoutes.History.route) },
@@ -49,6 +51,16 @@ fun NavGraph(navController: NavHostController) {
 
         composable(NavRoutes.MorningCheck.route) {
             MorningCheckScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(NavRoutes.FreeTraining.route) {
+            FreeTrainingScreen(
+                onBack = { navController.popBackStack() },
+                onComplete = { sessionId ->
+                    navController.popBackStack()
+                    navController.navigate(NavRoutes.SessionReport.createRoute(sessionId))
+                }
+            )
         }
 
         composable(NavRoutes.Evaluation.route) {

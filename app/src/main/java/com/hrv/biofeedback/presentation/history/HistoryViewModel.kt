@@ -32,6 +32,12 @@ class HistoryViewModel @Inject constructor(
         _filter.value = type
     }
 
+    fun convertToMorningCheck(sessionId: Long) {
+        viewModelScope.launch {
+            sessionRepository.convertSessionType(sessionId, SessionType.MORNING_CHECK)
+        }
+    }
+
     fun deleteSession(sessionId: Long) {
         viewModelScope.launch {
             sessionRepository.deleteSession(sessionId)

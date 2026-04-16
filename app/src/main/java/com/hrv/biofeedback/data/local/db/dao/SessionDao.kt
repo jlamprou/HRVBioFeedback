@@ -31,6 +31,9 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE type = 'ASSESSMENT' ORDER BY startTime DESC LIMIT 1")
     suspend fun getLatestAssessment(): SessionEntity?
 
+    @Query("UPDATE sessions SET type = :newType WHERE id = :sessionId")
+    suspend fun updateType(sessionId: Long, newType: String)
+
     @Query("DELETE FROM sessions WHERE id = :sessionId")
     suspend fun delete(sessionId: Long)
 

@@ -41,6 +41,10 @@ class PolarHrSource @Inject constructor(
     private val _batteryLevel = MutableStateFlow(-1)
     override val batteryLevel: StateFlow<Int> = _batteryLevel.asStateFlow()
 
+    // Passive HR from callback (always active when connected, doesn't conflict with streaming)
+    private val _lastHr = MutableStateFlow(0)
+    val lastHr: StateFlow<Int> = _lastHr.asStateFlow()
+
     private var connectedDeviceId: String? = null
 
     @Suppress("OVERRIDE_DEPRECATION")
@@ -101,7 +105,8 @@ class PolarHrSource @Inject constructor(
                 }
 
                 override fun hrNotificationReceived(identifier: String, data: PolarHrData.PolarHrSample) {
-                    // HR handled via streaming API
+                    // Passive HR updates (always active when connected, no streaming needed)
+                    _lastHr.value = data.hr
                 }
 
                 override fun bleSdkFeaturesReadiness(

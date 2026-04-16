@@ -2,6 +2,7 @@ package com.hrv.biofeedback.presentation.device
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hrv.biofeedback.data.ble.polar.PolarHrSource
 import com.hrv.biofeedback.domain.model.BleDevice
 import com.hrv.biofeedback.domain.model.ConnectionState
 import com.hrv.biofeedback.domain.repository.HrDataSource
@@ -22,14 +23,14 @@ class DeviceConnectionViewModel @Inject constructor(
     val connectionState: StateFlow<ConnectionState> = hrDataSource.connectionState
     val batteryLevel: StateFlow<Int> = hrDataSource.batteryLevel
 
+    // Use passive HR from callback — does NOT start a streaming session,
+    // so it won't conflict with Training/Assessment/MorningCheck streams.
+    val currentHr: StateFlow<Int> = (hrDataSource as PolarHrSource).lastHr
+
     private val _discoveredDevices = MutableStateFlow<List<BleDevice>>(emptyList())
     val discoveredDevices: StateFlow<List<BleDevice>> = _discoveredDevices.asStateFlow()
 
-    private val _currentHr = MutableStateFlow(0)
-    val currentHr: StateFlow<Int> = _currentHr.asStateFlow()
-
     private var scanJob: Job? = null
-    private var hrStreamJob: Job? = null
 
     fun startScan() {
         scanJob?.cancel()
@@ -58,34 +59,15 @@ class DeviceConnectionViewModel @Inject constructor(
         stopScan()
         viewModelScope.launch {
             hrDataSource.connect(deviceId)
-            // Start streaming HR once connected
-            startHrStream()
         }
     }
 
     fun disconnect() {
-        hrStreamJob?.cancel()
         viewModelScope.launch { hrDataSource.disconnect() }
-    }
-
-    private fun startHrStream() {
-        hrStreamJob?.cancel()
-        hrStreamJob = viewModelScope.launch {
-            try {
-                hrDataSource.streamHr()
-                    .catch { /* stream ended */ }
-                    .collect { sample ->
-                        _currentHr.value = sample.hr
-                    }
-            } catch (e: Exception) {
-                // Device not connected yet, will retry when state changes
-            }
-        }
     }
 
     override fun onCleared() {
         super.onCleared()
         scanJob?.cancel()
-        hrStreamJob?.cancel()
     }
 }

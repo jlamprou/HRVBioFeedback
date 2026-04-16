@@ -11,6 +11,7 @@ sealed class NavRoutes(val route: String) {
     data object History : NavRoutes("history")
     data object LiveMetrics : NavRoutes("live_metrics")
     data object MorningCheck : NavRoutes("morning_check")
+    data object FreeTraining : NavRoutes("free_training")
     data object Evaluation : NavRoutes("evaluation")
     data object Settings : NavRoutes("settings")
 }

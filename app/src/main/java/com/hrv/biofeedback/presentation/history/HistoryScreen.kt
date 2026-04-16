@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -161,6 +162,17 @@ fun HistoryScreen(
                                             style = MaterialTheme.typography.labelMedium,
                                             color = TextSecondary
                                         )
+                                        if (session.type != com.hrv.biofeedback.domain.model.SessionType.MORNING_CHECK) {
+                                            IconButton(
+                                                onClick = { viewModel.convertToMorningCheck(session.id) }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.SwapHoriz,
+                                                    contentDescription = "Convert to Morning Check",
+                                                    tint = CoherenceHigh.copy(alpha = 0.6f)
+                                                )
+                                            }
+                                        }
                                         IconButton(
                                             onClick = { sessionToDelete = session.id }
                                         ) {

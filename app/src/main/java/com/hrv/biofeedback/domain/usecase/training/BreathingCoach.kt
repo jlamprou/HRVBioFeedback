@@ -143,20 +143,27 @@ class BreathingCoach @Inject constructor() {
             }
         }
 
-        // --- Positive feedback ---
-        if (coherenceHistory.size >= 5) {
-            val recentCoherence = coherenceHistory.takeLast(5).average()
+        // --- Positive feedback (LF power + amplitude per Lehrer & Gevirtz 2014) ---
+        // Amplitude thresholds: 15-25 = good, 25+ = excellent (Lehrer protocol)
+        // LF power during RF: resting ~519 ms² (Nunan 2010), RF should be 2000+
+        if (amplitudeHistory.size >= 5) {
+            val recentAmp = amplitudeHistory.takeLast(5).average()
 
-            if (recentCoherence >= 1.8) {
+            if (recentAmp >= 25) {
                 tips.add(CoachingTip(
-                    "Excellent coherence! You're in the zone",
+                    "Excellent resonance! Strong HR oscillations",
                     TipType.POSITIVE, 10
                 ))
-            } else if (recentCoherence >= 0.5) {
-                val earlierCoherence = coherenceHistory.take(coherenceHistory.size / 2).average()
-                if (recentCoherence > earlierCoherence * 1.2) {
+            } else if (recentAmp >= 15) {
+                tips.add(CoachingTip(
+                    "Good resonance — your breathing is effective",
+                    TipType.POSITIVE, 9
+                ))
+            } else if (recentAmp >= 8) {
+                val earlierAmp = amplitudeHistory.take(amplitudeHistory.size / 2).average()
+                if (recentAmp > earlierAmp * 1.15) {
                     tips.add(CoachingTip(
-                        "Great improvement — your coherence is rising",
+                        "Improving — your amplitude is growing",
                         TipType.POSITIVE, 8
                     ))
                 }
@@ -178,7 +185,7 @@ class BreathingCoach @Inject constructor() {
         // --- Amplitude positive feedback ---
         if (amplitudeHistory.size >= 10) {
             val recentAmp = amplitudeHistory.takeLast(5).average()
-            if (recentAmp > 15.0) {
+            if (recentAmp > 20.0) {
                 tips.add(CoachingTip(
                     "Strong HR oscillations — your breathing is very effective",
                     TipType.POSITIVE, 7
