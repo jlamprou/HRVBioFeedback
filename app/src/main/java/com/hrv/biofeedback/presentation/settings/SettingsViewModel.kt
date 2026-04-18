@@ -29,6 +29,7 @@ class SettingsViewModel @Inject constructor(
     fun setVibrationEnabled(enabled: Boolean) { viewModelScope.launch { userPreferences.setVibrationEnabled(enabled) } }
     fun setAudioCuesEnabled(enabled: Boolean) { viewModelScope.launch { userPreferences.setAudioCuesEnabled(enabled) } }
     fun setAudioVolume(volume: Int) { viewModelScope.launch { userPreferences.setAudioVolume(volume) } }
+    fun setAdaptiveBreathingEnabled(enabled: Boolean) { viewModelScope.launch { userPreferences.setAdaptiveBreathingEnabled(enabled) } }
 
     fun setBirthYear(year: Int) { viewModelScope.launch { userPreferences.setBirthYear(year) } }
     fun setSex(sex: String) { viewModelScope.launch { userPreferences.setSex(sex) } }

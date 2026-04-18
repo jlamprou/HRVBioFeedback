@@ -204,10 +204,11 @@ class FreeTrainingViewModel @Inject constructor(
             val sessionId = sessionRepository.saveTrainingSession(
                 startTime = startTime,
                 endTime = System.currentTimeMillis(),
-                breathingRate = metrics.value.breathingRate, // Detected, not paced
+                breathingRate = metrics.value.breathingRate,
                 rrIntervals = hrvProcessor.allRrIntervals,
                 metricsSnapshots = hrvProcessor.allMetricsSnapshots,
-                artifactRate = hrvProcessor.signalQuality.artifactRatePercent
+                artifactRate = hrvProcessor.signalQuality.artifactRatePercent,
+                definitiveMetrics = hrvProcessor.computeDefinitive()
             )
             _savedSessionId.value = sessionId
         }

@@ -66,7 +66,8 @@ interface SessionRepository {
         breathingRate: Double,
         rrIntervals: List<Pair<Long, Double>>,
         metricsSnapshots: List<HrvMetrics>,
-        artifactRate: Double = 0.0
+        artifactRate: Double = 0.0,
+        definitiveMetrics: HrvMetrics? = null
     ): Long
 
     suspend fun saveAssessmentSession(
@@ -75,7 +76,8 @@ interface SessionRepository {
         result: RfAssessmentResult,
         rrIntervals: List<Pair<Long, Double>>,
         metricsSnapshots: List<HrvMetrics>,
-        artifactRate: Double = 0.0
+        artifactRate: Double = 0.0,
+        definitiveMetrics: HrvMetrics? = null
     ): Long
 
     suspend fun saveMorningCheck(
@@ -83,7 +85,8 @@ interface SessionRepository {
         endTime: Long,
         rrIntervals: List<Pair<Long, Double>>,
         metricsSnapshots: List<HrvMetrics>,
-        artifactRate: Double = 0.0
+        artifactRate: Double = 0.0,
+        definitiveMetrics: HrvMetrics? = null  // Task Force compliant full-recording analysis
     ): Long
 
     suspend fun getMorningCheckTrend(): List<SessionSummary>

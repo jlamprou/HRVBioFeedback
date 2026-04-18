@@ -69,6 +69,88 @@ class HrvProcessor @Inject constructor(
     private val _allMetricsSnapshots = mutableListOf<HrvMetrics>()
     val allMetricsSnapshots: List<HrvMetrics> get() = synchronized(_allMetricsSnapshots) { _allMetricsSnapshots.toList() }
 
+    /**
+     * One-shot definitive analysis on the COMPLETE RR interval series,
+     * bypassing the sliding window. Use at the END of a recording (e.g., 5-min
+     * morning check) to get Task Force-compliant metrics computed on the full
+     * dataset rather than a 120-second window.
+     *
+     * All time-domain, frequency-domain, and nonlinear metrics are computed
+     * on the entire recording per 1996 Task Force standards.
+     */
+    fun computeDefinitive(): HrvMetrics {
+        val rrSnapshot = synchronized(_allRrIntervals) { _allRrIntervals.toList() }
+        if (rrSnapshot.size < 50) return HrvMetrics()
+
+        // Apply artifact correction to all RRs
+        val cleaned = mutableListOf<Double>()
+        val cumulativeTimes = mutableListOf<Double>()
+        var cumTime = 0.0
+        val context = mutableListOf<Double>()
+        for ((_, rawRr) in rrSnapshot) {
+            val result = artifactDetector.detect(rawRr, context.takeLast(10))
+            val corrected = result.correctedRr
+            cleaned.add(corrected)
+            cumTime += corrected / 1000.0
+            cumulativeTimes.add(cumTime)
+            context.add(corrected)
+        }
+
+        // Time-domain on FULL series
+        val meanHr = metricsCalculator.calculateMeanHr(cleaned).toInt()
+        val rmssd = metricsCalculator.calculateRmssd(cleaned)
+        val sdnn = metricsCalculator.calculateSdnn(cleaned)
+        val pnn50 = metricsCalculator.calculatePnn50(cleaned)
+
+        // Spectral on FULL resampled series
+        var lfPower = 0.0; var hfPower = 0.0; var totalPower = 0.0
+        var lfHfRatio = 0.0; var peakFreq = 0.0; var coherence = 0.0
+        if (cumulativeTimes.size >= 3) {
+            try {
+                val (_, resampled) = splineInterpolator.resample(
+                    cumulativeTimes.toDoubleArray(), cleaned.toDoubleArray(), SAMPLE_RATE
+                )
+                if (resampled.size >= (MIN_DATA_SECONDS * SAMPLE_RATE).toInt()) {
+                    val psd = spectralAnalyzer.analyze(resampled, SAMPLE_RATE)
+                    if (psd.frequencies.isNotEmpty()) {
+                        lfPower = metricsCalculator.calculateLfPower(psd)
+                        hfPower = metricsCalculator.calculateHfPower(psd)
+                        totalPower = metricsCalculator.calculateTotalPower(psd)
+                        lfHfRatio = if (hfPower > 0) lfPower / hfPower else 0.0
+                        peakFreq = metricsCalculator.peakLfFrequency(psd)
+                        coherence = coherenceCalculator.calculate(psd).coherenceScore
+                    }
+                }
+            } catch (_: Exception) { }
+        }
+
+        // Nonlinear on FULL series
+        val nonlinear = try { nonlinearAnalyzer.computeAll(cleaned) }
+        catch (_: Exception) { NonlinearAnalyzer.NonlinearMetrics(0.0, 0.0, 0.0, 0.0, 0.0) }
+
+        return HrvMetrics(
+            hr = meanHr,
+            rmssd = rmssd,
+            sdnn = sdnn,
+            pnn50 = pnn50,
+            lfPower = lfPower,
+            hfPower = hfPower,
+            lfHfRatio = lfHfRatio,
+            totalPower = totalPower,
+            coherenceScore = coherence,
+            peakFrequency = peakFreq,
+            peakTroughAmplitude = 0.0, // not meaningful for natural-breathing recordings
+            sd1 = nonlinear.sd1,
+            sd2 = nonlinear.sd2,
+            dfaAlpha1 = nonlinear.dfaAlpha1,
+            sampleEntropy = nonlinear.sampleEntropy,
+            breathingRate = 0.0,
+            cardiorespCoherence = 0.0,
+            cardiorespPhase = 0.0,
+            timestamp = System.currentTimeMillis()
+        )
+    }
+
     @Volatile
     private var currentBreathingRate: Double = 6.0
     private var rrCount = 0

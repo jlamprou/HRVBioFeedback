@@ -202,14 +202,22 @@ fun TrainingSessionScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Breathing pacer with user settings
+                    // Breathing pacer with user settings.
+                    // onPhaseChange fires on INHALE phase start, which is the end of
+                    // the previous exhale = end of a full cycle. Apply pending
+                    // adaptive rate changes here so the new cycle starts fresh.
                     BreathingPacer(
                         breathingRate = breathingRate,
                         inhaleRatio = settings.inhaleRatio.toFloat(),
                         vibrationEnabled = settings.vibrationEnabled,
                         audioCuesEnabled = settings.audioCuesEnabled,
                         audioVolume = settings.audioVolume,
-                        modifier = Modifier
+                        modifier = Modifier,
+                        onPhaseChange = { phase, _ ->
+                            if (phase == com.hrv.biofeedback.domain.model.BreathingPhase.INHALE) {
+                                viewModel.onBreathingCycleComplete()
+                            }
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))

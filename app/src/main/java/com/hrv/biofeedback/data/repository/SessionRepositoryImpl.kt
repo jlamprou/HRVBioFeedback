@@ -71,11 +71,12 @@ class SessionRepositoryImpl @Inject constructor(
         breathingRate: Double,
         rrIntervals: List<Pair<Long, Double>>,
         metricsSnapshots: List<HrvMetrics>,
-        artifactRate: Double
+        artifactRate: Double,
+        definitiveMetrics: HrvMetrics?
     ): Long {
-        val avgMetrics = averageMetrics(metricsSnapshots)
+        val metricsToSave = definitiveMetrics ?: averageMetrics(metricsSnapshots)
         val sessionId = sessionDao.insert(
-            avgMetrics.toSessionEntity(SessionType.TRAINING, startTime, endTime, breathingRate, artifactRate)
+            metricsToSave.toSessionEntity(SessionType.TRAINING, startTime, endTime, breathingRate, artifactRate)
         )
 
         saveRrIntervals(sessionId, rrIntervals)
@@ -90,11 +91,12 @@ class SessionRepositoryImpl @Inject constructor(
         result: RfAssessmentResult,
         rrIntervals: List<Pair<Long, Double>>,
         metricsSnapshots: List<HrvMetrics>,
-        artifactRate: Double
+        artifactRate: Double,
+        definitiveMetrics: HrvMetrics?
     ): Long {
-        val avgMetrics = averageMetrics(metricsSnapshots)
+        val metricsToSave = definitiveMetrics ?: averageMetrics(metricsSnapshots)
         val sessionId = sessionDao.insert(
-            avgMetrics.toSessionEntity(
+            metricsToSave.toSessionEntity(
                 SessionType.ASSESSMENT, startTime, endTime,
                 result.optimalRate, artifactRate, rfResult = result.optimalRate
             )
@@ -129,11 +131,14 @@ class SessionRepositoryImpl @Inject constructor(
         endTime: Long,
         rrIntervals: List<Pair<Long, Double>>,
         metricsSnapshots: List<HrvMetrics>,
-        artifactRate: Double
+        artifactRate: Double,
+        definitiveMetrics: HrvMetrics?
     ): Long {
-        val avgMetrics = averageMetrics(metricsSnapshots)
+        // Use definitive full-recording metrics if provided (Task Force compliant),
+        // otherwise fall back to averaging snapshots.
+        val metricsToSave = definitiveMetrics ?: averageMetrics(metricsSnapshots)
         val sessionId = sessionDao.insert(
-            avgMetrics.toSessionEntity(SessionType.MORNING_CHECK, startTime, endTime, 0.0, artifactRate)
+            metricsToSave.toSessionEntity(SessionType.MORNING_CHECK, startTime, endTime, 0.0, artifactRate)
         )
 
         saveRrIntervals(sessionId, rrIntervals)

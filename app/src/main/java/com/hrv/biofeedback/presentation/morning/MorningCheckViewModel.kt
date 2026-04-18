@@ -176,7 +176,9 @@ class MorningCheckViewModel @Inject constructor(
         hrStreamJob?.cancel()
         timerJob?.cancel()
 
-        val currentMetrics = metrics.value
+        // Task Force compliance: compute metrics on the FULL 5-minute recording,
+        // not the last sliding-window snapshot.
+        val currentMetrics = hrvProcessor.computeDefinitive()
         val previousChecks = _trend.value
 
         // Compare with previous morning checks
@@ -213,17 +215,18 @@ class MorningCheckViewModel @Inject constructor(
 
         _state.value = CheckState.COMPLETED
 
-        // Save
+        // Save — use the Task Force-compliant full-recording metrics
         viewModelScope.launch {
             val sessionId = sessionRepository.saveMorningCheck(
                 startTime = startTime,
                 endTime = System.currentTimeMillis(),
                 rrIntervals = hrvProcessor.allRrIntervals,
                 metricsSnapshots = hrvProcessor.allMetricsSnapshots,
-                artifactRate = hrvProcessor.signalQuality.artifactRatePercent
+                artifactRate = hrvProcessor.signalQuality.artifactRatePercent,
+                definitiveMetrics = currentMetrics // same values the user sees
             )
             _savedSessionId.value = sessionId
-            loadTrend() // Refresh trend
+            loadTrend()
         }
     }
 

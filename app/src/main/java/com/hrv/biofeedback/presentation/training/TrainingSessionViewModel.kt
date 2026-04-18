@@ -68,6 +68,11 @@ class TrainingSessionViewModel @Inject constructor(
     private val _breathingRate = MutableStateFlow(6.0)
     val breathingRate: StateFlow<Double> = _breathingRate.asStateFlow()
 
+    // Pending rate change from adaptive adjustment — applied at end of current cycle
+    // to avoid disrupting the pacer animation mid-breath.
+    @Volatile
+    private var pendingBreathingRate: Double? = null
+
     private val hrHistoryBuffer = ArrayDeque<Pair<Int, Int>>(300)
     private val _hrHistory = MutableStateFlow<List<Pair<Int, Int>>>(emptyList())
     val hrHistory: StateFlow<List<Pair<Int, Int>>> = _hrHistory.asStateFlow()
@@ -170,7 +175,8 @@ class TrainingSessionViewModel @Inject constructor(
                 breathingRate = _breathingRate.value,
                 rrIntervals = hrvProcessor.allRrIntervals,
                 metricsSnapshots = hrvProcessor.allMetricsSnapshots,
-                artifactRate = hrvProcessor.signalQuality.artifactRatePercent
+                artifactRate = hrvProcessor.signalQuality.artifactRatePercent,
+                definitiveMetrics = hrvProcessor.computeDefinitive() // Task Force: full-session analysis
             )
             _savedSessionId.value = sessionId
         }
@@ -274,29 +280,43 @@ class TrainingSessionViewModel @Inject constructor(
 
     private fun startAdaptiveBreathing(baselineRate: Double) {
         adaptiveJob?.cancel()
+
+        // Only run if the user opted into the beta feature
+        if (!settings.value.adaptiveBreathingEnabled) return
+
         adaptiveJob = viewModelScope.launch {
             while (_sessionState.value == SessionState.RUNNING) {
                 delay(adaptiveIntervalSeconds * 1000L)
 
                 val currentMetrics = metrics.value
                 if (currentMetrics.lfPower > 0 && currentMetrics.peakFrequency > 0) {
-                    // The peak frequency in the LF band indicates where the body
-                    // is naturally resonating. Nudge breathing rate toward it.
-                    val peakBreathingRate = currentMetrics.peakFrequency * 60.0 // Hz to bpm
-
-                    // Only adjust if the peak is within reasonable range
+                    val peakBreathingRate = currentMetrics.peakFrequency * 60.0
                     if (peakBreathingRate in 4.0..7.0) {
                         val adjustment = (peakBreathingRate - _breathingRate.value)
-                            .coerceIn(-0.1, 0.1) // Small nudges
-
+                            .coerceIn(-0.1, 0.1)
                         val newRate = (_breathingRate.value + adjustment)
                             .coerceIn(baselineRate - maxAdjustment, baselineRate + maxAdjustment)
 
-                        _breathingRate.value = newRate
-                        hrvProcessor.setBreathingRate(newRate)
+                        // Queue the change — will apply at the end of the current breathing cycle
+                        // to avoid resetting the pacer animation mid-breath.
+                        pendingBreathingRate = newRate
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Called by the BreathingPacer at the end of each full inhale/exhale cycle.
+     * Applies any pending adaptive rate change at this clean boundary so the
+     * next cycle starts fresh at the new rate without breaking the current one.
+     */
+    fun onBreathingCycleComplete() {
+        val pending = pendingBreathingRate ?: return
+        pendingBreathingRate = null
+        if (kotlin.math.abs(pending - _breathingRate.value) > 0.01) {
+            _breathingRate.value = pending
+            hrvProcessor.setBreathingRate(pending)
         }
     }
 

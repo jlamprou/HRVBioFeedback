@@ -21,7 +21,8 @@ data class AppSettings(
     val inhaleRatio: Double = 0.4,
     val vibrationEnabled: Boolean = true,
     val audioCuesEnabled: Boolean = true,
-    val audioVolume: Int = 50
+    val audioVolume: Int = 50,
+    val adaptiveBreathingEnabled: Boolean = false  // Beta feature, off by default
 )
 
 /**
@@ -56,6 +57,7 @@ class UserPreferences @Inject constructor(
         val VIBRATION_ENABLED = booleanPreferencesKey("vibration_enabled")
         val AUDIO_CUES_ENABLED = booleanPreferencesKey("audio_cues_enabled")
         val AUDIO_VOLUME = intPreferencesKey("audio_volume")
+        val ADAPTIVE_BREATHING = booleanPreferencesKey("adaptive_breathing_enabled")
 
         val BIRTH_YEAR = intPreferencesKey("birth_year")
         val SEX = stringPreferencesKey("sex")
@@ -72,7 +74,8 @@ class UserPreferences @Inject constructor(
             inhaleRatio = prefs[Keys.INHALE_RATIO] ?: 0.4,
             vibrationEnabled = prefs[Keys.VIBRATION_ENABLED] ?: true,
             audioCuesEnabled = prefs[Keys.AUDIO_CUES_ENABLED] ?: true,
-            audioVolume = prefs[Keys.AUDIO_VOLUME] ?: 50
+            audioVolume = prefs[Keys.AUDIO_VOLUME] ?: 50,
+            adaptiveBreathingEnabled = prefs[Keys.ADAPTIVE_BREATHING] ?: false
         )
     }
 
@@ -93,6 +96,7 @@ class UserPreferences @Inject constructor(
     suspend fun setVibrationEnabled(enabled: Boolean) { context.dataStore.edit { it[Keys.VIBRATION_ENABLED] = enabled } }
     suspend fun setAudioCuesEnabled(enabled: Boolean) { context.dataStore.edit { it[Keys.AUDIO_CUES_ENABLED] = enabled } }
     suspend fun setAudioVolume(volume: Int) { context.dataStore.edit { it[Keys.AUDIO_VOLUME] = volume } }
+    suspend fun setAdaptiveBreathingEnabled(enabled: Boolean) { context.dataStore.edit { it[Keys.ADAPTIVE_BREATHING] = enabled } }
 
     suspend fun setBirthYear(year: Int) { context.dataStore.edit { it[Keys.BIRTH_YEAR] = year } }
     suspend fun setSex(sex: String) { context.dataStore.edit { it[Keys.SEX] = sex } }

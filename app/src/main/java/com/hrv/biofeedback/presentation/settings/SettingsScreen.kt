@@ -217,6 +217,23 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // --- Experimental ---
+            SectionHeader("Experimental")
+            SettingsCard {
+                SwitchSetting(
+                    label = "Adaptive Breathing Rate (BETA)",
+                    description = "Guided Training will auto-adjust breathing rate in real-time " +
+                            "based on your HRV response (\u00B10.5 bpm from baseline, max 0.1 bpm per " +
+                            "2-min step). This is an emerging technique (Laborde et al. 2022) with " +
+                            "limited validation. Changes apply at the end of each breathing cycle " +
+                            "to avoid disrupting your rhythm.",
+                    checked = settings.adaptiveBreathingEnabled,
+                    onCheckedChange = { viewModel.setAdaptiveBreathingEnabled(it) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // --- About ---
             SectionHeader("About")
             SettingsCard {
