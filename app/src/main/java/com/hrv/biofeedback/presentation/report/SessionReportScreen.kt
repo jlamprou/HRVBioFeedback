@@ -1,5 +1,6 @@
 package com.hrv.biofeedback.presentation.report
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -55,6 +57,16 @@ fun SessionReportScreen(
 ) {
     val sessionDetail by viewModel.sessionDetail.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val exportIntent by viewModel.exportIntent.collectAsStateWithLifecycle()
+    val localContext = androidx.compose.ui.platform.LocalContext.current
+
+    // Launch share sheet when export is ready
+    androidx.compose.runtime.LaunchedEffect(exportIntent) {
+        exportIntent?.let { intent ->
+            localContext.startActivity(Intent.createChooser(intent, "Export session data"))
+            viewModel.clearExportIntent()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -63,6 +75,17 @@ fun SessionReportScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.exportSession() },
+                        enabled = sessionDetail != null
+                    ) {
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = "Export CSV"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
